@@ -2,6 +2,21 @@ from rest_framework import serializers
 from django.contrib.auth.models import User 
 from django.contrib.auth.password_validation import validate_password 
 
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion 
+
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactMessage
+        fields = '__all__'
+        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
+class FrequentlyAskedQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FrequentlyAskedQuestion
+        fields = '__all__'
+        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
 
 class SignUpSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
@@ -37,3 +52,4 @@ class SignUpSerializer(serializers.ModelSerializer):
 class SignInSerializer(serializers.Serializer):
     username_or_email = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
+

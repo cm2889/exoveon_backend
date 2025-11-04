@@ -20,8 +20,62 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from django.contrib.auth.models import User 
 
-from backend.serializers import SignUpSerializer, SignInSerializer
-from backend.models import SignLog 
+from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion 
+from core.paginations import DynamicPagination 
+from core.exclude_csrf import CsrfExemptSessionAuthentication 
+
+
+from core.permissions import IsSuperUserOrPostAndRead
+
+
+class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
+    queryset = FrequentlyAskedQuestion.objects.filter(is_active=True) 
+    serializer_class = FrequentlyAskedQuestionSerializer
+    permission_classes = [IsSuperUserOrPostAndRead] 
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+
+    def perform_create(self, serializer):
+        serializer.save(
+            created_by=self.request.user if self.request.user.is_authenticated else None,
+        )
+    
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response({'message': 'FAQ deleted successfully'}, status=status.HTTP_200_OK)
+
+
+class ContactMessageViewSet(viewsets.ModelViewSet):
+    queryset = ContactMessage.objects.filter(is_active=True) 
+    serializer_class = ContactMessageSerializer
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    permission_classes = [IsSuperUserOrPostAndRead] 
+    pagination_class = DynamicPagination 
+
+    def perform_create(self, serializer):
+        user_ip = self.request.META.get('HTTP_X_FORWARDED_FOR') or self.request.META.get('REMOTE_ADDR') 
+        user_agent = self.request.META.get('HTTP_USER_AGENT', '')
+
+        serializer.save(
+            created_by=self.request.user if self.request.user.is_authenticated else None,
+            ip_address=user_ip,
+            user_agent=user_agent
+        )
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response({'message': 'Contact message deleted successfully'}, status=status.HTTP_200_OK)
 
 
 
