@@ -16,23 +16,19 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
 
-
-
 from django.contrib.auth.models import User 
 
 from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer
 from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion 
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
-
-
-from core.permissions import IsSuperUserOrPostAndRead
+from core.permissions import IsSuperUserOrPostAndRead, IsOwnerOrReadOnly
 
 
 class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
     queryset = FrequentlyAskedQuestion.objects.filter(is_active=True) 
     serializer_class = FrequentlyAskedQuestionSerializer
-    permission_classes = [IsSuperUserOrPostAndRead] 
+    permission_classes = [IsSuperUserOrPostAndRead, IsOwnerOrReadOnly] 
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
 
@@ -50,12 +46,11 @@ class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
         instance.save()
         return Response({'message': 'FAQ deleted successfully'}, status=status.HTTP_200_OK)
 
-
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.filter(is_active=True) 
     serializer_class = ContactMessageSerializer
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
-    permission_classes = [IsSuperUserOrPostAndRead] 
+    permission_classes = [IsSuperUserOrPostAndRead, IsOwnerOrReadOnly] 
     pagination_class = DynamicPagination 
 
     def perform_create(self, serializer):
