@@ -1,0 +1,206 @@
+{
+	"info": {
+		"_postman_id": "2e2aaf1e-5982-419f-869a-64c99e2f8941",
+		"name": "Orbitx",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37746563",
+		"_collection_link": "https://xstart-7250.postman.co/workspace/xStart-Workspace~6110ebd0-ec40-4354-8d62-cfdc5318fc18/collection/37746563-2e2aaf1e-5982-419f-869a-64c99e2f8941?action=share&source=collection_link&creator=37746563"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "signin-admin",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username_or_email\": \"admin\",\n  \"password\": \"admin\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}api/signin/",
+							"host": [
+								"{{base_url}}api"
+							],
+							"path": [
+								"signin",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "signin",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username_or_email\": \"asif\",\n  \"password\": \"admin\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}api/signin/",
+							"host": [
+								"{{base_url}}api"
+							],
+							"path": [
+								"signin",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "signup",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Asif\",\n  \"last_name\": \"Faisal\",\n  \"email\": \"asif@example.com\",\n  \"username\": \"asif\",\n  \"password\": \"admin\",\n  \"confirm_password\": \"admin\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}api/signup/",
+							"host": [
+								"{{base_url}}api"
+							],
+							"path": [
+								"signup",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "FAQ",
+			"item": [
+				{
+					"name": "FAQ",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0ODQ0MTAxLCJpYXQiOjE3NjIyNTIxMDEsImp0aSI6IjY5MDIyMzczMzBlZTRmZjNiMmFlZDlmYjE0YTZlYzBlIiwidXNlcl9pZCI6Mn0.ol7IgNZNCZWo38Rnm_HGe9BGtkEEuZbtYFIBQvegeq4",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"question\": \"How can I track my order?\",\n  \"answer\": \"You can track your order by logging into your account and checking the 'Orders' section.\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}api/faqs/",
+							"host": [
+								"{{base_url}}api"
+							],
+							"path": [
+								"faqs",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "FAQ Copy",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0ODQzOTMxLCJpYXQiOjE3NjIyNTE5MzEsImp0aSI6IjM5ZjdjNmZjMGJiYjRmZGViODAwNTU2ZGJjYjhmMzMyIiwidXNlcl9pZCI6MX0.YR0Itw8m5dUEUb4oU53_XLxmn799bd4wNhGsBQFORQA",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}api/faqs/4",
+							"host": [
+								"{{base_url}}api"
+							],
+							"path": [
+								"faqs",
+								"4"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Contract",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"full_name\": \"Asif Faisal\",\n  \"email\": \"asif@example.com\",\n  \"phone\": \"+8801712345678\",\n  \"subject\": \"Website Feedback\",\n  \"message\": \"Hey team, your website UI looks awesome! Keep up the good work.\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}api/contact-messages/",
+							"host": [
+								"{{base_url}}api"
+							],
+							"path": [
+								"contact-messages",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

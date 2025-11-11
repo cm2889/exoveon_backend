@@ -14,5 +14,10 @@ drf-yasg==1.21.10
 python-decouple==3.8
 djangorestframework_simplejwt==5.5.0
 dnspython==2.8.0 
+google-api-python-client==2.187.0
+google-auth-httplib2==0.2.1
+google-auth-oauthlib==1.2.3
+
+
 
 

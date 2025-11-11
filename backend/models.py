@@ -48,3 +48,27 @@ class FrequentlyAskedQuestion(models.Model):
 
     def __str__(self):
         return self.question 
+    
+
+
+class BookCalendar(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    event_id = models.CharField(max_length=255)
+    html_link = models.URLField()
+    start_datetime = models.DateTimeField()
+    end_datetime = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"BookingCalendar - {self.user.username} - {self.start_datetime}"
+    
+
+class BookMeet(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    meet_link = models.URLField()
+    start_datetime = models.DateTimeField()
+    end_datetime = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"BookingMeet - {self.user.username} - {self.start_datetime}"

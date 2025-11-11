@@ -1,6 +1,6 @@
-
 from datetime import timedelta 
 from pathlib import Path
+from decouple import config 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,6 +29,11 @@ INSTALLED_APPS = [
     "corsheaders",
     "backend", 
 ]
+
+# Strip whitespace to avoid redirect URI mismatches
+GOOGLE_OAUTH_CLIENT_ID = config('GOOGLE_OAUTH_CLIENT_ID').strip()
+GOOGLE_OAUTH_CLIENT_SECRET = config('GOOGLE_OAUTH_CLIENT_SECRET').strip()
+GOOGLE_OAUTH_REDIRECT_URI = config('GOOGLE_OAUTH_REDIRECT_URI').strip()
 
 
 
