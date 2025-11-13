@@ -57,7 +57,13 @@ class BookCalendar(models.Model):
     html_link = models.URLField()
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
+
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='calendar_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='calendar_updated_by')
+    updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False) 
 
     def __str__(self):
         return f"BookingCalendar - {self.user.username} - {self.start_datetime}"
@@ -68,7 +74,13 @@ class BookMeet(models.Model):
     meet_link = models.URLField()
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
+
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='meet_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='meet_updated_by')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False) 
 
     def __str__(self):
         return f"BookingMeet - {self.user.username} - {self.start_datetime}"

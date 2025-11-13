@@ -30,10 +30,13 @@ INSTALLED_APPS = [
     "backend", 
 ]
 
-# Strip whitespace to avoid redirect URI mismatches
-GOOGLE_OAUTH_CLIENT_ID = config('GOOGLE_OAUTH_CLIENT_ID').strip()
-GOOGLE_OAUTH_CLIENT_SECRET = config('GOOGLE_OAUTH_CLIENT_SECRET').strip()
-GOOGLE_OAUTH_REDIRECT_URI = config('GOOGLE_OAUTH_REDIRECT_URI').strip()
+_client_id =  config('client_id', default='')
+_client_secret = config('client_secret', default='')
+_redirect_uri =  config('redirect_uris', default='')
+
+GOOGLE_OAUTH_CLIENT_ID = (_client_id or '').strip()
+GOOGLE_OAUTH_CLIENT_SECRET = (_client_secret or '').strip()
+GOOGLE_OAUTH_REDIRECT_URI = (_redirect_uri or '').strip()
 
 
 
@@ -81,6 +84,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# Allow local origins for CSRF if needed during development
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
 ]
 
 ROOT_URLCONF = "orbitx.urls"

@@ -17,8 +17,8 @@ urlpatterns = [
     path('signout/', views.sign_out, name='sign_out'),
     
     # Google OAuth callback endpoints (support both paths)
-    path('google-oauth-callback/', views.google_oauth_callback, name='google_oauth_callback'),
-    path('google/auth/callback/', views.google_oauth_callback, name='google_oauth_callback_alt'),
+    # path('google-oauth-callback/', views.google_oauth_callback, name='google_oauth_callback'),
+    # path('google/auth/callback/', views.google_oauth_callback, name='google_oauth_callback_alt'),
 ]
 
 urlpatterns += router.urls

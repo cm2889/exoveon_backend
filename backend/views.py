@@ -1,4 +1,5 @@
 from django.utils import timezone 
+from datetime import timedelta
 from django.contrib.auth import authenticate 
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required 
@@ -11,7 +12,7 @@ from rest_framework import generics
 from rest_framework import viewsets 
 from rest_framework.exceptions import PermissionDenied 
 from rest_framework import permissions 
-from rest_framework.decorators import api_view, permission_classes 
+from rest_framework.decorators import api_view, permission_classes, action 
 from rest_framework_simplejwt.authentication import JWTAuthentication 
 from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
@@ -165,6 +166,7 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
         instance.is_active = False
         instance.save()
         return Response({'message': 'Contact message deleted successfully'}, status=status.HTTP_200_OK)
+    
 
 
 class BookCalendarViewSet(viewsets.ModelViewSet):
@@ -173,128 +175,24 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
-    
-    def get_queryset(self):
-        """Return bookings only for the authenticated user"""
-        return BookCalendar.objects.filter(user=self.request.user).order_by('-created_at')
-    
-    def create(self, request, *args, **kwargs):
-        """Create a calendar event in Google Calendar and save to database"""
-        serializer = self.get_serializer(data=request.data)
-        
-        if not serializer.is_valid():
-            return Response({
-                'success': False,
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            data = serializer.validated_data
-            
-            credentials_data = request.session.get('google_credentials')
-            
-            if not credentials_data:
-                flow = Flow.from_client_config(
-                    {
-                        "web": {
-                            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
-                            "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
-                            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                            "token_uri": "https://oauth2.googleapis.com/token",
-                            "redirect_uris": [settings.GOOGLE_OAUTH_REDIRECT_URI]
-                        }
-                    },
-                    scopes=['https://www.googleapis.com/auth/calendar']
-                )
 
-                flow.redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
-                authorization_url, state = flow.authorization_url(
-                    access_type='offline',
-                    include_granted_scopes='true'
-                )
-                
-                return Response({
-                    'success': False,
-                    'message': 'Google authentication required',
-                    'auth_url': authorization_url,
-                    'state': state
-                }, status=status.HTTP_401_UNAUTHORIZED)
-            
-            credentials = Credentials(**credentials_data)
-            
-            # Build Google Calendar service
-            service = build('calendar', 'v3', credentials=credentials)
-            
-            # Prepare event data
-            tz = data.pop('timezone', 'UTC')
-            event = {
-                'summary': data.pop('summary'),
-                'description': data.pop('description', ''),
-                'start': {
-                    'dateTime': data['start_datetime'].isoformat(),
-                    'timeZone': tz,
-                },
-                'end': {
-                    'dateTime': data['end_datetime'].isoformat(),
-                    'timeZone': tz,
-                },
-            }
-            
-            # Add location if provided
-            location = data.pop('location', None)
-            if location:
-                event['location'] = location
-            
-            # Add attendees if provided
-            attendees = data.pop('attendees', None)
-            if attendees:
-                event['attendees'] = [{'email': email} for email in attendees]
-            
-            # Add reminders
-            if data.pop('reminders', True):
-                event['reminders'] = {
-                    'useDefault': False,
-                    'overrides': [
-                        {'method': 'email', 'minutes': 24 * 60},
-                        {'method': 'popup', 'minutes': 30},
-                    ],
-                }
-            
-            # Create the event in Google Calendar
-            created_event = service.events().insert(
-                calendarId='primary',
-                body=event,
-                sendUpdates='all'
-            ).execute()
-            
-            # Save to database
-            booking = BookCalendar.objects.create(
-                user=request.user,
-                event_id=created_event.get('id'),
-                html_link=created_event.get('htmlLink'),
-                start_datetime=data['start_datetime'],
-                end_datetime=data['end_datetime']
-            )
-            
-            response_serializer = self.get_serializer(booking)
-            return Response({
-                'success': True,
-                'data': response_serializer.data,
-                'message': 'Calendar event created successfully'
-            }, status=status.HTTP_201_CREATED)
-            
-        except HttpError as error:
-            return Response({
-                'success': False,
-                'message': f'Google Calendar API error: {str(error)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        except Exception as e:
-            return Response({
-                'success': False,
-                'message': f'Error creating calendar event: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    def get_authenticate_header(self, request):
+        return BookCalendar.objects.filter(is_active=True) 
+    
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
+        return super().perform_create(serializer) 
+    
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+        return super().perform_update(serializer) 
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response({'message': 'Calendar booking deleted successfully'}, status=status.HTTP_200_OK)
+    
 
 class BookMeetViewSet(viewsets.ModelViewSet):
     queryset = BookMeet.objects.all()
@@ -302,196 +200,376 @@ class BookMeetViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
+
+    def get_authenticate_header(self, request):
+        return BookMeet.objects.filter(is_active=True)
     
-    def get_queryset(self):
-        """Return bookings only for the authenticated user"""
-        return BookMeet.objects.filter(user=self.request.user).order_by('-created_at')
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
+        return super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+        return super().perform_update(serializer)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response({'message': 'Meeting booking deleted successfully'}, status=status.HTTP_200_OK)
+
+
+
+
+# class BookCalendarViewSet(viewsets.ModelViewSet):
+#     queryset = BookCalendar.objects.all()
+#     serializer_class = BookCalendarSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+#     pagination_class = DynamicPagination
     
-    def create(self, request, *args, **kwargs):
-        """Create a Google Meet in Google Calendar and save to database"""
-        serializer = self.get_serializer(data=request.data)
+#     def get_queryset(self):
+#         """Return bookings only for the authenticated user"""
+#         return BookCalendar.objects.filter(user=self.request.user).order_by('-created_at')
+    
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
         
-        if not serializer.is_valid():
-            return Response({
-                'success': False,
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+#         if not serializer.is_valid():
+#             return Response({ 'success': False,  'errors': serializer.errors  }, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            data = serializer.validated_data
+#         try:
+#             data = serializer.validated_data
             
-            # Check if user has Google OAuth credentials stored in session
-            credentials_data = request.session.get('google_credentials')
+#             credentials_data = request.session.get('google_credentials')
+#             print(f"Debug message: {credentials_data}")
             
-            if not credentials_data:
-                # Return OAuth URL for user to authenticate
-                flow = Flow.from_client_config(
-                    {
-                        "web": {
-                            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
-                            "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
-                            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                            "token_uri": "https://oauth2.googleapis.com/token",
-                            "redirect_uris": [settings.GOOGLE_OAUTH_REDIRECT_URI]
-                        }
-                    },
-                    scopes=['https://www.googleapis.com/auth/calendar']
-                )
-                flow.redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
-                authorization_url, state = flow.authorization_url(
-                    access_type='offline',
-                    # Google expects lowercase 'true'/'false' strings here
-                    include_granted_scopes='true'
-                )
+#             if not credentials_data:
+#                 flow = Flow.from_client_config(
+#                     {
+#                         "web": {
+#                             "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+#                             "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+#                             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+#                             "token_uri": "https://oauth2.googleapis.com/token",
+#                             "redirect_uris": [settings.GOOGLE_OAUTH_REDIRECT_URI]
+#                         }
+#                     },
+#                     scopes=['https://www.googleapis.com/auth/calendar']
+#                 )
+
+#                 flow.redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
+#                 authorization_url, state = flow.authorization_url( access_type='offline',  include_granted_scopes='true' )
                 
-                return Response({
-                    'success': False,
-                    'message': 'Google authentication required',
-                    'auth_url': authorization_url,
-                    'state': state
-                }, status=status.HTTP_401_UNAUTHORIZED)
+#                 return Response({
+#                     'success': False,
+#                     'message': 'Google authentication required',
+#                     'auth_url': authorization_url,
+#                     'state': state
+#                 }, status=status.HTTP_401_UNAUTHORIZED)
             
-            # Create credentials from stored data
-            credentials = Credentials(**credentials_data)
+#             credentials = Credentials(**credentials_data)
             
-            # Build Google Calendar service
-            service = build('calendar', 'v3', credentials=credentials)
+#             # Build Google Calendar service
+#             service = build('calendar', 'v3', credentials=credentials)
             
-            # Prepare event data with Google Meet conference
-            tz = data.pop('timezone', 'UTC')
-            event = {
-                'summary': data.pop('summary'),
-                'description': data.pop('description', ''),
-                'start': {
-                    'dateTime': data['start_datetime'].isoformat(),
-                    'timeZone': tz,
-                },
-                'end': {
-                    'dateTime': data['end_datetime'].isoformat(),
-                    'timeZone': tz,
-                },
-                'conferenceData': {
-                    'createRequest': {
-                        'requestId': f"meet-{request.user.id}-{timezone.now().timestamp()}",
-                        'conferenceSolutionKey': {
-                            'type': 'hangoutsMeet'
-                        }
-                    }
-                }
-            }
+#             # Prepare event data
+#             tz = data.pop('timezone', 'UTC')
+#             event = {
+#                 'summary': data.pop('summary'),
+#                 'description': data.pop('description', ''),
+#                 'start': {
+#                     'dateTime': data['start_datetime'].isoformat(),
+#                     'timeZone': tz,
+#                 },
+#                 'end': {
+#                     'dateTime': data['end_datetime'].isoformat(),
+#                     'timeZone': tz,
+#                 },
+#             }
             
-            # Add attendees if provided
-            attendees = data.pop('attendees', None)
-            if attendees:
-                event['attendees'] = [{'email': email} for email in attendees]
+#             # Add location if provided
+#             location = data.pop('location', None)
+#             if location:
+#                 event['location'] = location
             
-            # Add reminders
-            if data.pop('reminders', True):
-                event['reminders'] = {
-                    'useDefault': False,
-                    'overrides': [
-                        {'method': 'email', 'minutes': 24 * 60},
-                        {'method': 'popup', 'minutes': 30},
-                    ],
-                }
+#             # Add attendees if provided
+#             attendees = data.pop('attendees', None)
+#             if attendees:
+#                 event['attendees'] = [{'email': email} for email in attendees]
             
-            # Create the event with conference data
-            send_updates = 'all' if data.pop('send_notifications', True) else 'none'
+#             # Add reminders
+#             if data.pop('reminders', True):
+#                 event['reminders'] = {
+#                     'useDefault': False,
+#                     'overrides': [
+#                         {'method': 'email', 'minutes': 24 * 60},
+#                         {'method': 'popup', 'minutes': 30},
+#                     ],
+#                 }
             
-            created_event = service.events().insert(
-                calendarId='primary',
-                body=event,
-                conferenceDataVersion=1,
-                sendUpdates=send_updates
-            ).execute()
+#             # Create the event in Google Calendar
+#             created_event = service.events().insert(
+#                 calendarId='primary',
+#                 body=event,
+#                 sendUpdates='all'
+#             ).execute()
             
-            # Extract Google Meet link
-            meet_link = None
-            if 'conferenceData' in created_event:
-                entry_points = created_event['conferenceData'].get('entryPoints', [])
-                for entry_point in entry_points:
-                    if entry_point.get('entryPointType') == 'video':
-                        meet_link = entry_point.get('uri')
-                        break
+#             # Save to database
+#             booking = BookCalendar.objects.create(
+#                 user=request.user,
+#                 event_id=created_event.get('id'),
+#                 html_link=created_event.get('htmlLink'),
+#                 start_datetime=data['start_datetime'],
+#                 end_datetime=data['end_datetime']
+#             )
             
-            # Save to database
-            booking = BookMeet.objects.create(
-                user=request.user,
-                meet_link=meet_link or '',
-                start_datetime=data['start_datetime'],
-                end_datetime=data['end_datetime']
-            )
+#             response_serializer = self.get_serializer(booking)
+#             return Response({
+#                 'success': True,
+#                 'data': response_serializer.data,
+#                 'message': 'Calendar event created successfully'
+#             }, status=status.HTTP_201_CREATED)
             
-            response_serializer = self.get_serializer(booking)
-            return Response({
-                'success': True,
-                'data': response_serializer.data,
-                'message': 'Google Meet created successfully'
-            }, status=status.HTTP_201_CREATED)
-            
-        except HttpError as error:
-            return Response({
-                'success': False,
-                'message': f'Google Calendar API error: {str(error)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         except HttpError as error:
+#             return Response({
+#                 'success': False,
+#                 'message': f'Google Calendar API error: {str(error)}'
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        except Exception as e:
-            return Response({
-                'success': False,
-                'message': f'Error creating Google Meet: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         except Exception as e:
+#             return Response({
+#                 'success': False,
+#                 'message': f'Error creating calendar event: {str(e)}'
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#     @action(detail=False, methods=['get'], url_path='sample-payload')
+#     def sample_payload(self, request):
+#         now = timezone.now()
+#         payload = {
+#             "summary": "Team Sync",
+#             "description": "Weekly sync",
+#             "start_datetime": (now + timedelta(hours=1)).isoformat(),
+#             "end_datetime": (now + timedelta(hours=2)).isoformat(),
+#             "timezone": "UTC",
+#             "attendees": [],
+#             "location": "Virtual",
+#             "reminders": True
+#         }
+#         return Response(payload, status=status.HTTP_200_OK)
 
 
-@api_view(['GET'])
-def google_oauth_callback(request):
-    """
-    Handle Google OAuth callback and store credentials
+# class BookMeetViewSet(viewsets.ModelViewSet):
+#     queryset = BookMeet.objects.all()
+#     serializer_class = BookMeetSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+#     pagination_class = DynamicPagination
     
-    GET /api/google-oauth-callback/?code=...&state=...
-    """
-    try:
-        code = request.GET.get('code')
+#     def get_queryset(self):
+#         """Return bookings only for the authenticated user"""
+#         return BookMeet.objects.filter(user=self.request.user).order_by('-created_at')
+    
+#     def create(self, request, *args, **kwargs):
+#         """Create a Google Meet in Google Calendar and save to database"""
+#         serializer = self.get_serializer(data=request.data)
         
-        if not code:
-            return Response({
-                'success': False,
-                'message': 'Authorization code not found'
-            }, status=status.HTTP_400_BAD_REQUEST)
+#         if not serializer.is_valid():
+#             return Response({
+#                 'success': False,
+#                 'errors': serializer.errors
+#             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Exchange authorization code for credentials
-        flow = Flow.from_client_config(
-            {
-                "web": {
-                    "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
-                    "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [settings.GOOGLE_OAUTH_REDIRECT_URI]
-                }
-            },
-            scopes=['https://www.googleapis.com/auth/calendar']
-        )
-        flow.redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
-        flow.fetch_token(code=code)
+#         try:
+#             data = serializer.validated_data
+            
+#             # Check if user has Google OAuth credentials stored in session
+#             credentials_data = request.session.get('google_credentials')
+            
+#             if not credentials_data:
+#                 # Return OAuth URL for user to authenticate
+#                 flow = Flow.from_client_config(
+#                     {
+#                         "web": {
+#                             "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+#                             "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+#                             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+#                             "token_uri": "https://oauth2.googleapis.com/token",
+#                             "redirect_uris": [settings.GOOGLE_OAUTH_REDIRECT_URI]
+#                         }
+#                     },
+#                     scopes=['https://www.googleapis.com/auth/calendar']
+#                 )
+#                 flow.redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
+#                 authorization_url, state = flow.authorization_url(
+#                     access_type='offline',
+#                     # Google expects lowercase 'true'/'false' strings here
+#                     include_granted_scopes='true'
+#                 )
+                
+#                 return Response({
+#                     'success': False,
+#                     'message': 'Google authentication required',
+#                     'auth_url': authorization_url,
+#                     'state': state
+#                 }, status=status.HTTP_401_UNAUTHORIZED)
+            
+#             # Create credentials from stored data
+#             credentials = Credentials(**credentials_data)
+            
+#             # Build Google Calendar service
+#             service = build('calendar', 'v3', credentials=credentials)
+            
+#             # Prepare event data with Google Meet conference
+#             tz = data.pop('timezone', 'UTC')
+#             event = {
+#                 'summary': data.pop('summary'),
+#                 'description': data.pop('description', ''),
+#                 'start': {
+#                     'dateTime': data['start_datetime'].isoformat(),
+#                     'timeZone': tz,
+#                 },
+#                 'end': {
+#                     'dateTime': data['end_datetime'].isoformat(),
+#                     'timeZone': tz,
+#                 },
+#                 'conferenceData': {
+#                     'createRequest': {
+#                         'requestId': f"meet-{request.user.id}-{timezone.now().timestamp()}",
+#                         'conferenceSolutionKey': {
+#                             'type': 'hangoutsMeet'
+#                         }
+#                     }
+#                 }
+#             }
+            
+#             # Add attendees if provided
+#             attendees = data.pop('attendees', None)
+#             if attendees:
+#                 event['attendees'] = [{'email': email} for email in attendees]
+            
+#             # Add reminders
+#             if data.pop('reminders', True):
+#                 event['reminders'] = {
+#                     'useDefault': False,
+#                     'overrides': [
+#                         {'method': 'email', 'minutes': 24 * 60},
+#                         {'method': 'popup', 'minutes': 30},
+#                     ],
+#                 }
+            
+#             # Create the event with conference data
+#             send_updates = 'all' if data.pop('send_notifications', True) else 'none'
+            
+#             created_event = service.events().insert(
+#                 calendarId='primary',
+#                 body=event,
+#                 conferenceDataVersion=1,
+#                 sendUpdates=send_updates
+#             ).execute()
+            
+#             # Extract Google Meet link
+#             meet_link = None
+#             if 'conferenceData' in created_event:
+#                 entry_points = created_event['conferenceData'].get('entryPoints', [])
+#                 for entry_point in entry_points:
+#                     if entry_point.get('entryPointType') == 'video':
+#                         meet_link = entry_point.get('uri')
+#                         break
+            
+#             # Save to database
+#             booking = BookMeet.objects.create(
+#                 user=request.user,
+#                 meet_link=meet_link or '',
+#                 start_datetime=data['start_datetime'],
+#                 end_datetime=data['end_datetime']
+#             )
+            
+#             response_serializer = self.get_serializer(booking)
+#             return Response({
+#                 'success': True,
+#                 'data': response_serializer.data,
+#                 'message': 'Google Meet created successfully'
+#             }, status=status.HTTP_201_CREATED)
+            
+#         except HttpError as error:
+#             return Response({
+#                 'success': False,
+#                 'message': f'Google Calendar API error: {str(error)}'
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        # Store credentials in session
-        credentials = flow.credentials
-        request.session['google_credentials'] = {
-            'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes
-        }
+#         except Exception as e:
+#             return Response({
+#                 'success': False,
+#                 'message': f'Error creating Google Meet: {str(e)}'
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#     @action(detail=False, methods=['get'], url_path='sample-payload')
+#     def sample_payload(self, request):
+#         now = timezone.now()
+#         payload = {
+#             "summary": "Client Call",
+#             "description": "Discuss requirements",
+#             "start_datetime": (now + timedelta(hours=3)).isoformat(),
+#             "end_datetime": (now + timedelta(hours=4)).isoformat(),
+#             "timezone": "UTC",
+#             "attendees": [],
+#             "send_notifications": True,
+#             "reminders": True
+#         }
+#         return Response(payload, status=status.HTTP_200_OK)
+
+
+# @api_view(['GET'])
+# def google_oauth_callback(request):
+#     """
+#     Handle Google OAuth callback and store credentials
+    
+#     GET /api/google-oauth-callback/?code=...&state=...
+#     """
+#     try:
+#         code = request.GET.get('code')
         
-        return Response({
-            'success': True,
-            'message': 'Google OAuth authentication successful'
-        }, status=status.HTTP_200_OK)
+#         if not code:
+#             return Response({
+#                 'success': False,
+#                 'message': 'Authorization code not found'
+#             }, status=status.HTTP_400_BAD_REQUEST)
         
-    except Exception as e:
-        return Response({
-            'success': False,
-            'message': f'OAuth callback error: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         # Exchange authorization code for credentials
+#         flow = Flow.from_client_config(
+#             {
+#                 "web": {
+#                     "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+#                     "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+#                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+#                     "token_uri": "https://oauth2.googleapis.com/token",
+#                     "redirect_uris": [settings.GOOGLE_OAUTH_REDIRECT_URI]
+#                 }
+#             },
+#             scopes=['https://www.googleapis.com/auth/calendar']
+#         )
+#         flow.redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
+#         flow.fetch_token(code=code)
+        
+#         # Store credentials in session
+#         credentials = flow.credentials
+#         request.session['google_credentials'] = {
+#             'token': credentials.token,
+#             'refresh_token': credentials.refresh_token,
+#             'token_uri': credentials.token_uri,
+#             'client_id': credentials.client_id,
+#             'client_secret': credentials.client_secret,
+#             'scopes': credentials.scopes
+#         }
+        
+#         return Response({
+#             'success': True,
+#             'message': 'Google OAuth authentication successful'
+#         }, status=status.HTTP_200_OK)
+        
+#     except Exception as e:
+#         return Response({
+#             'success': False,
+#             'message': f'OAuth callback error: {str(e)}'
+#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
