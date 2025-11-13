@@ -55,79 +55,15 @@ class SignInSerializer(serializers.Serializer):
 
 
 class BookCalendarSerializer(serializers.ModelSerializer):
-    """
-    Serializer for BookCalendar model with Google Calendar integration
-    """
-    # Additional fields for creating Google Calendar event
-    summary = serializers.CharField(write_only=True, max_length=255, help_text="Event title/summary")
-    description = serializers.CharField(write_only=True, required=False, allow_blank=True, help_text="Event description")
-    timezone = serializers.CharField(write_only=True, required=False, default='UTC', help_text="Timezone (e.g., 'America/New_York')")
-    attendees = serializers.ListField(
-        child=serializers.EmailField(),
-        write_only=True,
-        required=False,
-        allow_empty=True,
-        help_text="List of attendee email addresses"
-    )
-    location = serializers.CharField(write_only=True, required=False, allow_blank=True, help_text="Event location")
-    reminders = serializers.BooleanField(write_only=True, required=False, default=True, help_text="Enable reminders")
-    
-    # Read-only fields from model
-    user = serializers.StringRelatedField(read_only=True)
-    
     class Meta:
         model = BookCalendar
-        fields = [
-            'id', 'user', 'event_id', 'html_link', 'start_datetime', 'end_datetime', 
-            'created_at', 'summary', 'description', 'timezone', 'attendees', 
-            'location', 'reminders'
-        ]
-        read_only_fields = ['id', 'user', 'event_id', 'html_link', 'created_at']
+        fields = '__all__'
+        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
     
-    def validate(self, attrs):
-        """Validate that end_datetime is after start_datetime"""
-        if attrs['start_datetime'] >= attrs['end_datetime']:
-            raise serializers.ValidationError({
-                'end_datetime': 'End time must be after start time.'
-            })
-        return attrs
-
 
 class BookMeetSerializer(serializers.ModelSerializer):
-    """
-    Serializer for BookMeet model with Google Meet integration
-    """
-    # Additional fields for creating Google Meet
-    summary = serializers.CharField(write_only=True, max_length=255, help_text="Meeting title")
-    description = serializers.CharField(write_only=True, required=False, allow_blank=True, help_text="Meeting description")
-    timezone = serializers.CharField(write_only=True, required=False, default='UTC', help_text="Timezone (e.g., 'America/New_York')")
-    attendees = serializers.ListField(
-        child=serializers.EmailField(),
-        write_only=True,
-        required=False,
-        allow_empty=True,
-        help_text="List of attendee email addresses"
-    )
-    send_notifications = serializers.BooleanField(write_only=True, required=False, default=True, help_text="Send email notifications to attendees")
-    reminders = serializers.BooleanField(write_only=True, required=False, default=True, help_text="Enable reminders")
-    
-    # Read-only fields from model
-    user = serializers.StringRelatedField(read_only=True)
-    
     class Meta:
         model = BookMeet
-        fields = [
-            'id', 'user', 'meet_link', 'start_datetime', 'end_datetime', 
-            'created_at', 'summary', 'description', 'timezone', 'attendees',
-            'send_notifications', 'reminders'
-        ]
-        read_only_fields = ['id', 'user', 'meet_link', 'created_at']
-    
-    def validate(self, attrs):
-        """Validate that end_datetime is after start_datetime"""
-        if attrs['start_datetime'] >= attrs['end_datetime']:
-            raise serializers.ValidationError({
-                'end_datetime': 'End time must be after start time.'
-            })
-        return attrs
+        fields = '__all__'
+        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
