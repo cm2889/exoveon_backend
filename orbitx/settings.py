@@ -30,13 +30,9 @@ INSTALLED_APPS = [
     "backend", 
 ]
 
-_client_id =  config('client_id', default='')
-_client_secret = config('client_secret', default='')
-_redirect_uri =  config('redirect_uris', default='')
-
-GOOGLE_OAUTH_CLIENT_ID = (_client_id or '').strip()
-GOOGLE_OAUTH_CLIENT_SECRET = (_client_secret or '').strip()
-GOOGLE_OAUTH_REDIRECT_URI = (_redirect_uri or '').strip()
+GOOGLE_OAUTH_CLIENT_ID = config('client_id', default='').strip()
+GOOGLE_OAUTH_CLIENT_SECRET = config('client_secret', default='').strip()
+GOOGLE_OAUTH_REDIRECT_URI = config('redirect_uris', default='').strip()
 
 
 
@@ -73,10 +69,17 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+CORS_ALLOW_CREDENTIALS = True  
 
 MIDDLEWARE = [
+    # CORS must be as high as possible, before CommonMiddleware
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -86,10 +89,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# Allow local origins for CSRF if needed during development
+
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
 
 ROOT_URLCONF = "orbitx.urls"

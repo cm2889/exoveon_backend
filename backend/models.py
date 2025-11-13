@@ -52,11 +52,13 @@ class FrequentlyAskedQuestion(models.Model):
 
 
 class BookCalendar(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     event_id = models.CharField(max_length=255)
-    html_link = models.URLField()
-    start_datetime = models.DateTimeField()
-    end_datetime = models.DateTimeField()
+    html_link = models.URLField(null=True, blank=True)
+    timezone = models.CharField(max_length=100, null=True, blank=True)
+    date = models.DateField(null=True, blank=True)
+    start_datetime = models.DateTimeField(null=True, blank=True)
+    end_datetime = models.DateTimeField(null=True, blank=True)
 
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='calendar_created_by') 
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='calendar_updated_by')
@@ -65,8 +67,14 @@ class BookCalendar(models.Model):
     is_active = models.BooleanField(default=True)
     deleted = models.BooleanField(default=False) 
 
+    def save(self, *args, **kwargs):
+        if not self.event_id:
+            import uuid
+            self.event_id = str(uuid.uuid4())
+        super().save(*args, **kwargs) 
+
     def __str__(self):
-        return f"BookingCalendar - {self.user.username} - {self.start_datetime}"
+        return f"BookingCalendar  - {self.event_id} "
     
 
 class BookMeet(models.Model):

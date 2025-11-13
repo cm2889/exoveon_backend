@@ -8,7 +8,7 @@ import sys
 # ====== CONFIGURE YOUR CREDENTIALS HERE ======
 # ⚠️ ACTION: REPLACE THIS WITH YOUR ACTUAL API KEY FROM GOOGLE CLOUD CONSOLE
 # This is NOT your client secret (GOCSPX-...). It should look like AIzaSy...
-API_KEY = " AIzaSyBnLftThDcZ2nBxcQeUxOhaVyhiFo52G9w"  
+API_KEY = "AIzaSyBnLftThDcZ2nBxcQeUxOhaVyhiFo52G9w"  
 PUBLIC_CAL_ID = "calendar-json.googleapis.com" # A public calendar ID that works for testing
 # =============================================
 

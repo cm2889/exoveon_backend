@@ -58,7 +58,7 @@ class BookCalendarSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookCalendar
         fields = '__all__'
-        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        read_only_fields = ['event_id', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
     
 
 class BookMeetSerializer(serializers.ModelSerializer):

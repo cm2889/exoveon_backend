@@ -172,7 +172,7 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
 class BookCalendarViewSet(viewsets.ModelViewSet):
     queryset = BookCalendar.objects.all()
     serializer_class = BookCalendarSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
 
@@ -197,7 +197,7 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
 class BookMeetViewSet(viewsets.ModelViewSet):
     queryset = BookMeet.objects.all()
     serializer_class = BookMeetSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
 
