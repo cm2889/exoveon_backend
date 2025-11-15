@@ -75,8 +75,11 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'https://orbitx.uk',
-    "http://orbitx.uk", 
+    "http://18.169.147.71", 
+    'https://orbitx.uk', 
+    "https://www.orbitx.uk",
+    'http://orbitx.uk', 
+    "http://www.orbitx.uk",
 ]
 CORS_ALLOW_CREDENTIALS = True  
 
@@ -96,8 +99,11 @@ MIDDLEWARE = [
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    "http://18.169.147.71", 
     'https://orbitx.uk', 
+    "https://www.orbitx.uk",
     'http://orbitx.uk', 
+    "http://www.orbitx.uk",
 ]
 
 ROOT_URLCONF = "orbitx.urls"
