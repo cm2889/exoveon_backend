@@ -11,9 +11,9 @@ class SignLogAdmin(admin.ModelAdmin):
 
 @admin.register(ContactMessage)
 class ContactMessageAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'email', 'subject', 'created_at', 'is_active')
+    list_display = ('full_name', 'email',  'created_at', 'is_active')
     list_filter = ('is_active', 'created_at')
-    search_fields = ('full_name', 'email', 'subject', 'message')
+    search_fields = ('full_name', 'email', 'message')
 
 @admin.register(FrequentlyAskedQuestion)
 class FrequentlyAskedQuestionAdmin(admin.ModelAdmin):
