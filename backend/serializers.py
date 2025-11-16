@@ -1,7 +1,9 @@
 from rest_framework import serializers 
 from django.contrib.auth.models import User 
 from django.contrib.auth.password_validation import validate_password 
-
+from django.conf import settings
+from django.utils import timezone
+import pytz
 from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet 
 
 
@@ -59,8 +61,28 @@ class BookCalendarSerializer(serializers.ModelSerializer):
         model = BookCalendar
         fields = '__all__'
         read_only_fields = ['event_id', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
-    
 
+    def validate(self, attrs):
+
+        tz_name = attrs.get('timezone') or (getattr(self.instance, 'timezone', None) if self.instance else None) or settings.TIME_ZONE
+
+        try:
+            tz = pytz.timezone(tz_name)
+        except Exception:
+            raise serializers.ValidationError({"timezone": "Invalid timezone."})
+
+        # Current moment in the booking timezone
+        now_tz = timezone.now().astimezone(tz)
+
+        # Validate date (keep it as date object)
+        date_value = attrs.get('date')
+        if date_value is not None:
+            if date_value < now_tz.date():
+                raise serializers.ValidationError({"date": "The date cannot be in the past for the booking timezone."})
+            
+        return super().validate(attrs)
+    
+    
 class BookMeetSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookMeet
