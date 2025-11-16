@@ -121,7 +121,7 @@ def sign_out(request):
 class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
     queryset = FrequentlyAskedQuestion.objects.filter(is_active=True) 
     serializer_class = FrequentlyAskedQuestionSerializer
-    permission_classes = [IsSuperUserOrPostAndRead, IsOwnerOrReadOnly] 
+    permission_classes = [permissions.AllowAny] 
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
 
@@ -145,7 +145,7 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.filter(is_active=True) 
     serializer_class = ContactMessageSerializer
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
-    permission_classes = [IsSuperUserOrPostAndRead, IsOwnerOrReadOnly] 
+    permission_classes = [permissions.AllowAny] 
     pagination_class = DynamicPagination 
 
     def perform_create(self, serializer):
