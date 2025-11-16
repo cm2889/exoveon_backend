@@ -32,7 +32,7 @@ class ContactMessage(models.Model):
     deleted = models.BooleanField(default=False) 
 
     def __str__(self):
-        return f"ContactMessage - {self.subject} from {self.full_name}"
+        return f"ContactMessage  from {self.full_name}"
     
     class Meta:
         ordering = ['-created_at']
