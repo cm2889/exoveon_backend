@@ -19,11 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from django.contrib.auth.models import User 
 
-from backend.serializers import (
-    SignUpSerializer, SignInSerializer, ContactMessageSerializer, 
-    FrequentlyAskedQuestionSerializer, BookCalendarSerializer,
-    BookMeetSerializer, EmailSubscribeSerializer
-)
+from backend.serializers import ( SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, BookMeetSerializer, EmailSubscribeSerializer)
 from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
@@ -38,6 +34,7 @@ import json
 from django.http import JsonResponse 
 from uuid import uuid4
 from core.calendly import CalendlyClient 
+
 
 def get_event_types(request):
     calendly_client = CalendlyClient()
@@ -167,7 +164,6 @@ class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
         return Response({'message': 'FAQ deleted successfully'}, status=status.HTTP_200_OK)
 
 
-
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.filter(is_active=True) 
     serializer_class = ContactMessageSerializer
@@ -195,7 +191,6 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Contact message deleted successfully'}, status=status.HTTP_200_OK)
     
 
-
 class BookCalendarViewSet(viewsets.ModelViewSet):
     queryset = BookCalendar.objects.all()
     serializer_class = BookCalendarSerializer
@@ -207,29 +202,8 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
         return BookCalendar.objects.filter(is_active=True) 
     
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
-
-        calendly_payload = {
-            'name': self.request.data.get('name'),
-            'slug': self.request.data.get('slug'),
-            'internal_note': self.request.data.get('internal_note'),
-            'description_plain': self.request.data.get('description_plain'),
-            'kind': self.request.data.get('kind'),
-            'duration': self.request.data.get('duration'),
-        }
-
-        if calendly_payload['kind']:
-            try:
-                calendly_payload['name'] = calendly_payload['name'] or 'New Event Type'
-                calendly_payload['slug'] = calendly_payload['slug'] or uuid4().hex
-                calendly_payload['internal_note'] = calendly_payload['internal_note'] or ''
-                calendly_payload['description_plain'] = calendly_payload['description_plain'] or ''
-                calendly_payload['duration'] = int(calendly_payload['duration'] or 30)
-
-                client = CalendlyClient()
-                calendly_response = client.create_scheduled_event(**calendly_payload)
-            except Exception as e:
-                pass
+        serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
+        return super().perform_create(serializer)
     
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
