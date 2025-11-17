@@ -36,19 +36,10 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import json
 from django.http import JsonResponse 
-
+from uuid import uuid4
 from core.calendly import CalendlyClient 
 
 def get_event_types(request):
-    """Proxy endpoint to list Calendly event types.
-
-    Optional query params:
-      - organization: Calendly organization URI to filter by
-      - user: Calendly user URI to filter by
-      - active: true/false
-      - count: page size (1..100)
-      - page_token: for pagination
-    """
     calendly_client = CalendlyClient()
     try:
         organization = request.GET.get('organization') or None
@@ -164,6 +155,7 @@ class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
         serializer.save(
             created_by=self.request.user if self.request.user.is_authenticated else None,
         )
+        
     
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
@@ -215,8 +207,29 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
         return BookCalendar.objects.filter(is_active=True) 
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
-        return super().perform_create(serializer) 
+        instance = serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
+
+        calendly_payload = {
+            'name': self.request.data.get('name'),
+            'slug': self.request.data.get('slug'),
+            'internal_note': self.request.data.get('internal_note'),
+            'description_plain': self.request.data.get('description_plain'),
+            'kind': self.request.data.get('kind'),
+            'duration': self.request.data.get('duration'),
+        }
+
+        if calendly_payload['kind']:
+            try:
+                calendly_payload['name'] = calendly_payload['name'] or 'New Event Type'
+                calendly_payload['slug'] = calendly_payload['slug'] or uuid4().hex
+                calendly_payload['internal_note'] = calendly_payload['internal_note'] or ''
+                calendly_payload['description_plain'] = calendly_payload['description_plain'] or ''
+                calendly_payload['duration'] = int(calendly_payload['duration'] or 30)
+
+                client = CalendlyClient()
+                calendly_response = client.create_scheduled_event(**calendly_payload)
+            except Exception as e:
+                pass
     
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
@@ -262,7 +275,7 @@ class EmailSubscribeViewSet(viewsets.ModelViewSet):
     pagination_class = DynamicPagination
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user if self.request.user.is_authenticated else None)
+        serializer.save(user=self.request.user if self.request.user.is_authenticated else None)        
         return super().perform_create(serializer)
 
     def perform_update(self, serializer):

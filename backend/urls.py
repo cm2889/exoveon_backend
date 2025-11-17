@@ -17,10 +17,6 @@ urlpatterns = [
     path('signin/', views.sign_in, name='sign_in'), 
     path('signout/', views.sign_out, name='sign_out'),
     path('calendly/event-types/', views.get_event_types, name='get_event_types'),
-    
-    # Google OAuth callback endpoints (support both paths)
-    # path('google-oauth-callback/', views.google_oauth_callback, name='google_oauth_callback'),
-    # path('google/auth/callback/', views.google_oauth_callback, name='google_oauth_callback_alt'),
 ]
 
 urlpatterns += router.urls

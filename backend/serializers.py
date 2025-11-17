@@ -57,12 +57,30 @@ class SignInSerializer(serializers.Serializer):
 
 
 class BookCalendarSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    slug = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    internal_note = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    description_plain = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    kind = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    duration = serializers.IntegerField(write_only=True, required=False)
+
     class Meta:
         model = BookCalendar
         fields = '__all__'
         read_only_fields = ['event_id', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
     def validate(self, attrs):
+        calendly_keys = {k: attrs.get(k) for k in ['kind', 'duration']}
+        
+        if any(calendly_keys.values()):
+            kind = calendly_keys.get('kind') or ''
+            if kind and kind not in { 'solo', 'group' }:
+                raise serializers.ValidationError({"kind": "Invalid Calendly event type kind. Use 'solo' or 'group'."})
+            
+            duration = calendly_keys.get('duration')
+            if duration is not None:
+                if duration <= 0 or duration > 480:  
+                    raise serializers.ValidationError({"duration": "Duration must be between 1 and 480 minutes."})
 
         tz_name = attrs.get('timezone') or (getattr(self.instance, 'timezone', None) if self.instance else None) or settings.TIME_ZONE
 
@@ -71,16 +89,32 @@ class BookCalendarSerializer(serializers.ModelSerializer):
         except Exception:
             raise serializers.ValidationError({"timezone": "Invalid timezone."})
 
-        # Current moment in the booking timezone
         now_tz = timezone.now().astimezone(tz)
 
-        # Validate date (keep it as date object)
         date_value = attrs.get('date')
         if date_value is not None:
             if date_value < now_tz.date():
                 raise serializers.ValidationError({"date": "The date cannot be in the past for the booking timezone."})
             
         return super().validate(attrs)
+
+    # Ensure non-model, write-only Calendly fields are not passed to the model layer
+    _transient_calendly_fields = (
+        'name', 'slug', 'internal_note', 'description_plain', 'kind', 'duration', 'owner'
+    )
+
+    def _strip_transient_fields(self, data: dict) -> dict:
+        for k in self._transient_calendly_fields:
+            data.pop(k, None)
+        return data
+
+    def create(self, validated_data):
+        validated_data = self._strip_transient_fields(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data = self._strip_transient_fields(validated_data)
+        return super().update(instance, validated_data)
     
     
 class BookMeetSerializer(serializers.ModelSerializer):

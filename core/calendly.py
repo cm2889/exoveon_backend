@@ -1,3 +1,4 @@
+import uuid 
 import requests
 from django.conf import settings
 
@@ -67,29 +68,23 @@ class CalendlyClient:
         elif user:
             params["user"] = user
         else:
-            # Defensive guard; should not happen due to discovery logic above
             raise ValueError(
                 "Calendly list_event_types requires 'organization' or 'user' filter, and auto-discovery failed"
             )
 
         return self._get("/event_types", params=params)
 
-    def create_webhook(self, url: str, events: list[str]):
-        me = self.get_user_info()
-        resource = me.get("resource", {}) if isinstance(me, dict) else {}
-        organization = resource.get("current_organization")
-        if not organization:
-            raise RuntimeError("Unable to resolve Calendly organization for webhook creation")
+
+    def create_scheduled_event(self, name: str, slug: str, internal_note: str, description_plain: str, kind: str, duration: int ):
 
         payload = {
-            "url": url,
-            "events": events,
-            "organization": organization,
-            "scope": "organization",
+            "name": name if name else "New Event Type",
+            "slug": slug if slug else uuid.uuid4().hex,
+            "internal_note": internal_note if internal_note else "",
+            "description_plain": description_plain if description_plain else "",
+            "kind": kind,
+            "duration": duration if duration else 30,
+            "owner": 'https://api.calendly.com/users/c2438102-5ad5-4595-bf5f-82d00234b648',
         }
 
-        verify_token = getattr(settings, "CALENDLY_WEBHOOK_VERIFY_TOKEN", None)
-        if verify_token:
-            payload["verify_token"] = verify_token
-
-        return self._post("/webhook_subscriptions", json=payload)
+        return self._post("/event_types", json=payload)
