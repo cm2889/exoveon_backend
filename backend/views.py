@@ -35,6 +35,41 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import json
+from django.http import JsonResponse 
+
+from core.calendly import CalendlyClient 
+
+def get_event_types(request):
+    """Proxy endpoint to list Calendly event types.
+
+    Optional query params:
+      - organization: Calendly organization URI to filter by
+      - user: Calendly user URI to filter by
+      - active: true/false
+      - count: page size (1..100)
+      - page_token: for pagination
+    """
+    calendly_client = CalendlyClient()
+    try:
+        organization = request.GET.get('organization') or None
+        user = request.GET.get('user') or None
+        active = request.GET.get('active')
+        if active is not None:
+            active = active.lower() in ('1', 'true', 'yes')
+        count = request.GET.get('count')
+        count = int(count) if count else 50
+        page_token = request.GET.get('page_token') or None
+
+        event_types = calendly_client.list_event_types(
+            organization=organization,
+            user=user,
+            active=active,
+            count=count,
+            page_token=page_token,
+        )
+        return JsonResponse(event_types, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @api_view(['POST'])

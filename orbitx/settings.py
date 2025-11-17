@@ -13,7 +13,6 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -30,10 +29,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "backend", 
 ]
-
-GOOGLE_OAUTH_CLIENT_ID = config('client_id', default='').strip()
-GOOGLE_OAUTH_CLIENT_SECRET = config('client_secret', default='').strip()
-GOOGLE_OAUTH_REDIRECT_URI = config('redirect_uris', default='').strip()
 
 
 
@@ -60,6 +55,13 @@ REST_FRAMEWORK = {
 }
 
 
+CALENDLY_CLIENT_ID = config('calendly_client_id')
+CALENDLY_CLIENT_SECRET = config('calendly_client_secret')
+CALENDLY_TOKEN = config('calendly_token')
+CALENDLY_WEBHOOK_VERIFY_TOKEN = config('calendly_webhook_verify_token')
+CALENDLY_REDIRECT_URI = config('calendly_redirect_uri')
+
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=30),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
@@ -75,7 +77,6 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    "http://18.169.147.71", 
     'https://orbitx.uk', 
     "https://www.orbitx.uk",
     'http://orbitx.uk', 
@@ -102,7 +103,6 @@ MIDDLEWARE = [
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    "http://18.169.147.71", 
     'https://orbitx.uk', 
     "https://www.orbitx.uk",
     'http://orbitx.uk', 
