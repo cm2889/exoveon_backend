@@ -102,3 +102,15 @@ class BookMeet(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class EmailSubscribe(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    email = models.EmailField(unique=True)
+    subscribed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.email
+
+    class Meta:
+        ordering = ['-subscribed_at']

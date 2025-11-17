@@ -22,9 +22,9 @@ from django.contrib.auth.models import User
 from backend.serializers import (
     SignUpSerializer, SignInSerializer, ContactMessageSerializer, 
     FrequentlyAskedQuestionSerializer, BookCalendarSerializer,
-    BookMeetSerializer
+    BookMeetSerializer, EmailSubscribeSerializer
 )
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet 
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
 from core.permissions import IsSuperUserOrPostAndRead, IsOwnerOrReadOnly
@@ -217,6 +217,27 @@ class BookMeetViewSet(viewsets.ModelViewSet):
         instance.is_active = False
         instance.save()
         return Response({'message': 'Meeting booking deleted successfully'}, status=status.HTTP_200_OK)
+    
+
+class EmailSubscribeViewSet(viewsets.ModelViewSet):
+    queryset = EmailSubscribe.objects.all()
+    serializer_class = EmailSubscribeSerializer
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user if self.request.user.is_authenticated else None)
+        return super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        serializer.save()
+        return super().perform_update(serializer)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response({'message': 'Email subscription deleted successfully'}, status=status.HTTP_200_OK)
 
 
 

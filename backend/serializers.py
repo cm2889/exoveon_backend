@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.utils import timezone
 import pytz
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet 
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):
@@ -88,4 +88,11 @@ class BookMeetSerializer(serializers.ModelSerializer):
         model = BookMeet
         fields = '__all__'
         read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
+
+class EmailSubscribeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailSubscribe
+        fields = '__all__'
+        read_only_fields = ['user', 'subscribed_at']
 

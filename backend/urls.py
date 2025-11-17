@@ -10,6 +10,7 @@ router.register(r'contact-messages', views.ContactMessageViewSet, basename='cont
 
 router.register(r'book-calendar', views.BookCalendarViewSet, basename='book-calendar')
 router.register(r'book-meet', views.BookMeetViewSet, basename='book-meet')
+router.register(r'email-subscribe', views.EmailSubscribeViewSet, basename='email-subscribe')
 
 urlpatterns = [
     path('signup/', views.sign_up, name='sign_up'),
