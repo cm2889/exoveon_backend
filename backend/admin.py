@@ -8,7 +8,9 @@ from backend.models import (
     BookMeet,
     BlogCategory,
     BlogPost,
-    EmailSubscribe
+    EmailSubscribe,
+    PrivacyPolicy,
+    TermsAndConditions,
 )
 
 
@@ -64,3 +66,16 @@ class BlogPostAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("title",)}
     list_filter = ('status', 'is_active', 'category')
     autocomplete_fields = ('category',)
+
+
+@admin.register(PrivacyPolicy)
+class PrivacyPolicyAdmin(admin.ModelAdmin):
+    list_display = ('version', 'updated_at', 'is_active')
+    search_fields = ('version',)
+    list_filter = ('is_active', 'updated_at')
+
+@admin.register(TermsAndConditions)
+class TermsAndConditionsAdmin(admin.ModelAdmin):
+    list_display = ('version', 'updated_at', 'is_active')
+    search_fields = ('version',)
+    list_filter = ('is_active', 'updated_at')

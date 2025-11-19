@@ -174,7 +174,6 @@ class BlogPost(models.Model):
     slug = models.SlugField(max_length=100, unique=True, blank=True) 
 
     content = RichTextUploadingField()
-    excerpt = RichTextUploadingField(null=True, blank=True) 
 
     meta_title = models.CharField(max_length=255, null=True, blank=True)
     meta_description = models.TextField(null=True, blank=True) 
@@ -197,3 +196,42 @@ class BlogPost(models.Model):
 
     class Meta:
         ordering = ['-published_at']
+
+
+
+class PrivacyPolicy(models.Model):
+    version = models.CharField(max_length=50, null=True, blank=True)
+    content = RichTextUploadingField()
+
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='privacypolicy_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='privacypolicy_updated_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"PrivacyPolicy - {self.created_at}"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Privacy Policy"
+
+
+class TermsAndConditions(models.Model):
+    version = models.CharField(max_length=50, null=True, blank=True) 
+    content = RichTextUploadingField()
+
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='terms_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='terms_updated_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"TermsAndConditions - {self.created_at}"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Terms and Conditions" 

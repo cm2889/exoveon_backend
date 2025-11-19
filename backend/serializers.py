@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.utils import timezone
 import pytz
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe, BlogCategory, BlogPost 
+from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions 
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):
@@ -147,3 +147,17 @@ class BlogPostSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
         read_only_fields = [ 'status', 'published_at', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
+
+class PrivacyPolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrivacyPolicy
+        fields = '__all__'
+        read_only_fields = [ 'version' 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
+
+class TermsAndConditionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TermsAndConditions
+        fields = '__all__'
+        read_only_fields = [ 'version', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']

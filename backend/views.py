@@ -19,8 +19,9 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from django.contrib.auth.models import User 
 
-from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, BookMeetSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe, BlogCategory, BlogPost 
+from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy
+
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
 from core.permissions import IsSuperUserOrPostAndRead, IsOwnerOrReadOnly
@@ -38,9 +39,7 @@ from core.calendly import CalendlyClient
 import pytz
 
 
-# Helper function to load Google OAuth credentials from credentials.json
 def load_google_credentials():
-    """Load Google OAuth credentials from credentials.json file"""
     credentials_path = os.path.join(settings.BASE_DIR, 'credentials.json')
     with open(credentials_path, 'r') as f:
         credentials_data = json.load(f)
@@ -158,22 +157,19 @@ class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny] 
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
-
-    def perform_create(self, serializer):
-        serializer.save(
-            created_by=self.request.user if self.request.user.is_authenticated else None,
-        )
-        
+    http_method_names = ['get', 'head', 'options']
     
+    def create(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
     def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_active = False
-        instance.save()
-        return Response({'message': 'FAQ deleted successfully'}, status=status.HTTP_200_OK)
-
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.filter(is_active=True) 
@@ -191,16 +187,18 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
             ip_address=user_ip,
             user_agent=user_agent
         )
-
-    def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
+    
+        return super().perform_create(serializer)
+    
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_active = False
-        instance.save()
-        return Response({'message': 'Contact message deleted successfully'}, status=status.HTTP_200_OK)
-    
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 
 class EmailSubscribeViewSet(viewsets.ModelViewSet):
     queryset = EmailSubscribe.objects.all()
@@ -213,15 +211,16 @@ class EmailSubscribeViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user if self.request.user.is_authenticated else None)        
         return super().perform_create(serializer)
 
-    def perform_update(self, serializer):
-        serializer.save()
-        return super().perform_update(serializer)
-
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.delete()
-        return Response({'message': 'Email subscription deleted successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+   
 
 class BlogCategoryViewSet(viewsets.ModelViewSet):
     queryset = BlogCategory.objects.filter(is_active=True)
@@ -229,21 +228,21 @@ class BlogCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
+    http_method_names = ['get', 'head', 'options'] 
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
-        return super().perform_create(serializer)
 
-    def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
-        return super().perform_update(serializer)
+    def create(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_active = False
-        instance.save()
-        return Response({'message': 'Blog category deleted successfully'}, status=status.HTTP_200_OK)
-    
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 
 class BlogPostViewSet(viewsets.ModelViewSet):
     queryset = BlogPost.objects.filter(is_active=True)
@@ -251,27 +250,27 @@ class BlogPostViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
+    http_method_names = ['get', 'head', 'options'] 
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
-        return super().perform_create(serializer)
-
-    def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
-        return super().perform_update(serializer)
-
+    def create(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_active = False
-        instance.save()
-        return Response({'message': 'Blog post deleted successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    
 class BookCalendarViewSet(viewsets.ModelViewSet):
     queryset = BookCalendar.objects.all()
     serializer_class = BookCalendarSerializer
     permission_classes = [permissions.AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
-    pagination_class = DynamicPagination
+    pagination_class = DynamicPagination 
     
     def get_queryset(self):
         """Return bookings only for the authenticated user"""
@@ -289,7 +288,7 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
             data = serializer.validated_data
             
             credentials_data = request.session.get('google_credentials')
-            print(f"Debug message: {credentials_data}")
+            # print(f"Debug message: {credentials_data}")
             
             # Ensure we have usable Google OAuth credentials; if not, return auth URL
             def oauth_response():
@@ -456,6 +455,7 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
                 'message': f'Error creating calendar event: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
     @action(detail=False, methods=['get'], url_path='sample-payload')
     def sample_payload(self, request):
         now = timezone.now()
@@ -473,6 +473,15 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
         }
 
         return Response(payload, status=status.HTTP_200_OK)
+    
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def destroy(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 @api_view(['GET'])
@@ -511,6 +520,46 @@ def google_oauth_callback(request):
         return Response({'success': False, 'message': f'OAuth callback error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class TermsAndConditionsViewSet(viewsets.ModelViewSet):
+    queryset = TermsAndConditions.objects.filter(is_active=True)
+    serializer_class = TermsAndConditionsSerializer
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+    http_method_names = ['get', 'head', 'options'] 
+
+    def create(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def destroy(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    
+    
+class PrivacyPolicyViewSet(viewsets.ModelViewSet):
+    queryset = PrivacyPolicy.objects.filter(is_active=True)
+    serializer_class = PrivacyPolicySerializer
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+    http_method_names = ['get', 'head', 'options'] 
+
+    def create(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    def destroy(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    
 
 # class BookCalendarViewSet(viewsets.ModelViewSet):
 #     queryset = BookCalendar.objects.filter(is_active=True)
