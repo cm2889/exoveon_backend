@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.utils import timezone
 import pytz
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe, BlogCategory, BlogPost 
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):
@@ -12,6 +12,7 @@ class ContactMessageSerializer(serializers.ModelSerializer):
         model = ContactMessage
         fields = '__all__'
         read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
 
 class FrequentlyAskedQuestionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -60,37 +61,89 @@ class BookCalendarSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookCalendar
         fields = '__all__'
-        read_only_fields = ['event_id', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        read_only_fields = [
+            'event_number', 'book_link', 'meet_link', 'user',
+            'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted'
+        ]
 
     def validate(self, attrs):
-
+        # Validate timezone
         tz_name = attrs.get('timezone') or (getattr(self.instance, 'timezone', None) if self.instance else None) or settings.TIME_ZONE
-
         try:
             tz = pytz.timezone(tz_name)
         except Exception:
             raise serializers.ValidationError({"timezone": "Invalid timezone."})
 
-        now_tz = timezone.now().astimezone(tz)
+        # Allow attendees to be provided as list; store as comma-separated string
+        attendees = attrs.get('attendees')
+        if isinstance(attendees, list):
+            try:
+                attrs['attendees'] = ','.join(attendees)
+            except Exception:
+                raise serializers.ValidationError({"attendees": "Must be a list of email strings or a comma-separated string."})
 
+        # Validate time ordering if both provided (end may be omitted; view will default to +1h)
+        start_dt = attrs.get('start_datetime')
+        end_dt = attrs.get('end_datetime')
+        if start_dt and end_dt and start_dt >= end_dt:
+            raise serializers.ValidationError({"end_datetime": "End time must be after start time."})
+
+        # Optional: prevent booking date in the past when explicit date provided
+        now_tz = timezone.now().astimezone(tz)
         date_value = attrs.get('date')
-        if date_value is not None:
-            if date_value < now_tz.date():
-                raise serializers.ValidationError({"date": "The date cannot be in the past for the booking timezone."})
-            
+        if date_value is not None and date_value < now_tz.date():
+            raise serializers.ValidationError({"date": "The date cannot be in the past for the booking timezone."})
+
         return super().validate(attrs)
     
     
 class BookMeetSerializer(serializers.ModelSerializer):
+    # Extra fields for Google Meet event creation
+    summary = serializers.CharField(required=True, write_only=True)
+    description = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    attendees = serializers.ListField(child=serializers.EmailField(), required=False, write_only=True)
+    send_notifications = serializers.BooleanField(required=False, default=True, write_only=True)
+    reminders = serializers.BooleanField(required=False, default=True, write_only=True)
+    timezone = serializers.CharField(required=False, default='UTC', write_only=True)
+    
     class Meta:
         model = BookMeet
         fields = '__all__'
-        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        read_only_fields = ['meet_link', 'user', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+    
+    def validate(self, attrs):
+        start_datetime = attrs.get('start_datetime')
+        end_datetime = attrs.get('end_datetime')
+        
+        if start_datetime and end_datetime:
+            if start_datetime >= end_datetime:
+                raise serializers.ValidationError({"end_datetime": "End time must be after start time."})
+            
+            now = timezone.now()
+            if start_datetime < now:
+                raise serializers.ValidationError({"start_datetime": "Start time cannot be in the past."})
+        
+        return super().validate(attrs)
 
 
 class EmailSubscribeSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailSubscribe
         fields = '__all__'
-        read_only_fields = ['user', 'subscribed_at']
+        read_only_fields = ['user', 'subscribed_at', 'is_active', 'deleted']
 
+
+class BlogCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlogCategory
+        fields = '__all__'
+
+        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
+
+class BlogPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlogPost
+        fields = '__all__'
+
+        read_only_fields = [ 'status', 'published_at', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']

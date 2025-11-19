@@ -29,4 +29,5 @@ api_documentation_urls = [
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("backend.urls")),
+    path('ckeditor/', include('ckeditor_uploader.urls')),
 ] + api_documentation_urls + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

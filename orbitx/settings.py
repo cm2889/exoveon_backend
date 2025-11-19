@@ -4,7 +4,7 @@ from pathlib import Path
 from decouple import config 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(_file_)))
 
 SECRET_KEY = "django-insecure-kp!xwwv*dj5m=vwrd_5^@42#^m*j9493-=8*7pyd7h_wb6vwzh"
 
@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "drf_yasg",        
     "corsheaders",
+    "ckeditor", 
+    "ckeditor_uploader", 
     "backend", 
 ]
 
@@ -53,6 +55,16 @@ REST_FRAMEWORK = {
     ),
   
 }
+
+
+GOOGLE_CLIENT_SECRETS_FILE = os.path.join(BASE_DIR, "credentials.json")
+
+GOOGLE_SCOPES = [
+        "https://www.googleapis.com/auth/userinfo.profile",  
+        "https://www.googleapis.com/auth/userinfo.email",
+        "openid"
+    ]
+
 
 
 CALENDLY_CLIENT_ID = config('calendly_client_id')
@@ -88,9 +100,9 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True  
 
 MIDDLEWARE = [
-    # CORS must be as high as possible, before CommonMiddleware
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -158,9 +170,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-
-
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "UTC"
@@ -172,11 +181,41 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-STATIC_ROOT = '/srv/orbitx/orbitx-backend/staticfiles/'
+# STATIC_ROOT = '/srv/orbitx/orbitx-backend/staticfiles/'
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static')
+]
 
+FIXTURE_DIRS = [
+    os.path.join(BASE_DIR, 'fixtures')
+]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media' 
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+CKEDITOR_UPLOAD_PATH = 'uploads/'
+
+
+CKEDITOR_IMAGE_BACKEND = "pillow"
+
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'full',
+        'height': 300,
+        'width': '100%',
+        'extraAllowedContent': 'img[!src,alt,width,height];',
+    }
+}
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('GMAIL_CLIENT_ID')
+EMAIL_HOST_PASSWORD = config('GMAIL_PASSWORD')
+DEFAULT_FROM_EMAIL = config('GMAIL_CLIENT_ID')
