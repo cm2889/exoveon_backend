@@ -3,8 +3,7 @@ from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-import pytz
-from backend.models import BookCalendar
+from backend.models import BookCalendar, ContactMessage 
 
 
 @receiver(post_save, sender=BookCalendar)
@@ -76,10 +75,59 @@ def send_booking_email(sender, instance, created, **kwargs):
     if not recipient_list:
         return
 
-    # Choose from email
     from_email = settings.EMAIL_HOST_USER 
 
     try:
-        send_mail(message=message, subject=subject,  from_email=from_email,  recipient_list=recipient_list,  fail_silently=False,)
+        send_mail(message=message, subject=subject, from_email=from_email, recipient_list=recipient_list, fail_silently=False)
     except Exception:
         pass
+
+
+@receiver(post_save, sender=ContactMessage)
+def send_contact_notification(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    subject = f"New Contact Message from {instance.full_name}"
+
+    html_message = f"""
+        <div style="font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; text-align: justify;">
+            <p>Dear <strong>{instance.full_name}</strong>,</p>
+
+            <p>
+                Thank you for contacting <strong>OrbitX</strong>. We appreciate the time you took to submit your inquiry 
+                through our Contact Us form. This message confirms that we have successfully received your request, and it 
+                has been forwarded to the appropriate department for further review.
+            </p>
+
+            <p>
+                At OrbitX, we are committed to providing a <strong>responsive, reliable, and high-quality customer support 
+                experience</strong>. Our team will thoroughly review the information you have submitted to ensure we fully 
+                understand your needs. If required, a support representative may reach out for additional details so that we 
+                can offer the most precise and helpful assistance.
+            </p>
+
+            <p>
+                Please allow our support specialists some time to evaluate your message. We strive to respond as promptly as 
+                possible, and in most cases, you can expect a follow-up within our standard response window. If your inquiry 
+                is urgent or requires immediate attention, you may reply directly to this email, and your request will be 
+                prioritized accordingly.
+            </p>
+
+            <p>
+                We genuinely value your trust in our platform and remain committed to supporting you at every step. Your 
+                feedback, questions, and suggestions play a vital role in helping us enhance our services and maintain the 
+                highest standards of customer care. Thank you again for reaching out to OrbitX. We look forward to assisting 
+                you and ensuring that your experience with us remains positive and productive.
+            </p>
+
+            <p>
+                Warm regards,<br>
+                <strong>OrbitX Support Team</strong>
+            </p>
+        </div>
+    """
+
+    from_email = settings.EMAIL_HOST_USER
+
+    send_mail(subject=subject, message="",from_email=from_email, recipient_list=[instance.email],html_message=html_message, fail_silently=False)
