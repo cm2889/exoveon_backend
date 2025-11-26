@@ -88,11 +88,17 @@ def send_contact_notification(sender, instance, created, **kwargs):
     if not created:
         return
 
-    subject = f"New Contact Message from {instance.full_name}"
+    contact_name = getattr(instance, 'name', 'Valued Customer')
+    contact_email = getattr(instance, 'business_email', None)
+    
+    if not contact_email:
+        return 
+
+    subject = f"New Contact Message from {contact_name}"
 
     html_message = f"""
         <div style="font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; text-align: justify;">
-            <p>Dear <strong>{instance.full_name}</strong>,</p>
+            <p>Dear <strong>{contact_name}</strong>,</p>
 
             <p>
                 Thank you for contacting <strong>OrbitX</strong>. We appreciate the time you took to submit your inquiry 
@@ -130,4 +136,7 @@ def send_contact_notification(sender, instance, created, **kwargs):
 
     from_email = settings.EMAIL_HOST_USER
 
-    send_mail(subject=subject, message="",from_email=from_email, recipient_list=[instance.email],html_message=html_message, fail_silently=False)
+    try:
+        send_mail(subject=subject, message="", from_email=from_email, recipient_list=[contact_email], html_message=html_message, fail_silently=False)
+    except Exception:
+        pass  # Fail silently to avoid breaking the request
