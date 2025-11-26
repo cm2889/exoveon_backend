@@ -94,6 +94,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://orbitx.uk', 
     "http://www.orbitx.uk",
     "https://www.orbitx.uk",
+    "https://orbitx.design"
 
 ]
 
@@ -120,6 +121,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://orbitx.uk', 
     "http://www.orbitx.uk",
     "https://www.orbitx.uk",
+    "https://orbitx.design"
 ]
 
 ROOT_URLCONF = "orbitx.urls"

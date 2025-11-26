@@ -5,7 +5,6 @@ from backend.models import (
     ContactMessage,
     FrequentlyAskedQuestion,
     BookCalendar,
-    BookMeet,
     BlogCategory,
     BlogPost,
     EmailSubscribe,
@@ -22,9 +21,9 @@ class SignLogAdmin(admin.ModelAdmin):
 
 @admin.register(ContactMessage)
 class ContactMessageAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'email',  'created_at', 'is_active')
+    list_display = ('name', 'business_email',  'created_at', 'is_active')
     list_filter = ('is_active', 'created_at')
-    search_fields = ('full_name', 'email', 'message')
+    search_fields = ('name', 'business_email', 'message')
 
 @admin.register(FrequentlyAskedQuestion)
 class FrequentlyAskedQuestionAdmin(admin.ModelAdmin):
@@ -36,11 +35,6 @@ class FrequentlyAskedQuestionAdmin(admin.ModelAdmin):
 class BookCalendarAdmin(admin.ModelAdmin):
     list_display = ('event_number', 'start_datetime', 'end_datetime', 'created_at')
     search_fields = ('user__username', 'event_number')
-
-@admin.register(BookMeet)
-class BookMeetAdmin(admin.ModelAdmin):
-    list_display = ('user', 'meet_link', 'start_datetime', 'end_datetime', 'created_at')
-    search_fields = ('user__username', 'meet_link')
 
 @admin.register(EmailSubscribe)
 class EmailSubscribeAdmin(admin.ModelAdmin):

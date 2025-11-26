@@ -20,7 +20,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.contrib.auth.models import User 
 
 from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy
 
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 

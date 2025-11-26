@@ -14,13 +14,30 @@ class SignLog(models.Model):
 
     def __str__(self):
         return f"SignLog - {self.user.username if self.user else 'Unknown'} - {self.created_at}" 
-    
 
 class ContactMessage(models.Model):
-    full_name = models.CharField(max_length=255)
-    
-    email = models.EmailField(max_length=255, null=True, blank=True) 
-    message = models.TextField(null=True, blank=True) 
+
+    INVESTMENT_STAGES_CHOICE = (
+        ("BOOTSTRAPPED", "Bootsrapped or Self-funded"), 
+        ("PRE-SEED", "Pre-Seed"), 
+        ("SEED", "Seed"), 
+        ("SERIES_A", "Series A"), 
+        ("SERIES_B", "Series B"), 
+        ("SERIES_C", "Series C"), 
+        ("SERIES_D", "Series D"), 
+        ("IPO", "IPO")
+    )
+
+    industry = models.CharField(max_length=255, null=True, blank=True) 
+    investment_stage = models.CharField(max_length=50, choices=INVESTMENT_STAGES_CHOICE, null=True, blank=True)   
+
+    about = models.TextField(null=True, blank=True) 
+    current_problem = models.TextField(null=True, blank=True) 
+    interests = models.JSONField(default=list, blank=True)
+    budget = models.CharField(max_length=255, null=True, blank=True)
+
+    name = models.CharField(max_length=255)
+    business_email = models.EmailField(max_length=255, null=True, blank=True) 
 
     # metadata 
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -34,7 +51,7 @@ class ContactMessage(models.Model):
     deleted = models.BooleanField(default=False) 
 
     def __str__(self):
-        return f"ContactMessage  from {self.full_name}"
+        return f"{self.name}"
     
     class Meta:
         ordering = ['-created_at']
@@ -102,25 +119,6 @@ class BookCalendar(models.Model):
     class Meta:
         ordering = ['-created_at']
     
-
-class BookMeet(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    meet_link = models.URLField()
-    start_datetime = models.DateTimeField()
-    end_datetime = models.DateTimeField()
-
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='meet_created_by') 
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='meet_updated_by')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_active = models.BooleanField(default=True)
-    deleted = models.BooleanField(default=False) 
-
-    def __str__(self):
-        return f"BookingMeet - {self.user.username} - {self.start_datetime}"
-
-    class Meta:
-        ordering = ['-created_at']
 
 class EmailSubscribe(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)

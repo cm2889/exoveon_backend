@@ -4,21 +4,19 @@ from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.utils import timezone
 import pytz
-from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, BookMeet, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions 
+from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions 
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactMessage
-        fields = '__all__'
-        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
 
 class FrequentlyAskedQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = FrequentlyAskedQuestion
-        fields = '__all__'
-        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -96,68 +94,33 @@ class BookCalendarSerializer(serializers.ModelSerializer):
 
         return super().validate(attrs)
     
-    
-class BookMeetSerializer(serializers.ModelSerializer):
-    # Extra fields for Google Meet event creation
-    summary = serializers.CharField(required=True, write_only=True)
-    description = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    attendees = serializers.ListField(child=serializers.EmailField(), required=False, write_only=True)
-    send_notifications = serializers.BooleanField(required=False, default=True, write_only=True)
-    reminders = serializers.BooleanField(required=False, default=True, write_only=True)
-    timezone = serializers.CharField(required=False, default='UTC', write_only=True)
-    
-    class Meta:
-        model = BookMeet
-        fields = '__all__'
-        read_only_fields = ['meet_link', 'user', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
-    
-    def validate(self, attrs):
-        start_datetime = attrs.get('start_datetime')
-        end_datetime = attrs.get('end_datetime')
-        
-        if start_datetime and end_datetime:
-            if start_datetime >= end_datetime:
-                raise serializers.ValidationError({"end_datetime": "End time must be after start time."})
-            
-            now = timezone.now()
-            if start_datetime < now:
-                raise serializers.ValidationError({"start_datetime": "Start time cannot be in the past."})
-        
-        return super().validate(attrs)
 
 
 class EmailSubscribeSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailSubscribe
-        fields = '__all__'
-        read_only_fields = ['user', 'subscribed_at', 'is_active', 'deleted']
+        exclude = ['user', 'subscribed_at', 'is_active', 'deleted']
 
 
 class BlogCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = BlogCategory
-        fields = '__all__'
-
-        read_only_fields = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
 
 class BlogPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = BlogPost
-        fields = '__all__'
-
-        read_only_fields = [ 'status', 'published_at', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        exclude = ['status', 'published_at', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
 
 class PrivacyPolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = PrivacyPolicy
-        fields = '__all__'
-        read_only_fields = [ 'version' 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        exclude = ['version', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
 
 class TermsAndConditionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = TermsAndConditions
-        fields = '__all__'
-        read_only_fields = [ 'version', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        exclude = ['version', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
