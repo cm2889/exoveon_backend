@@ -30,11 +30,8 @@ from django.conf import settings
 from google.oauth2.service_account import Credentials as ServiceAccountCredentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import json
 import os
-from django.http import JsonResponse 
 from uuid import uuid4
-from core.calendly import CalendlyClient 
 import pytz
 
 

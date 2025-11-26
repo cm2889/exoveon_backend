@@ -10,7 +10,7 @@ from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAsk
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactMessage
-        exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+        exclude = ['ip_address', 'user_agent', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
 
 class FrequentlyAskedQuestionSerializer(serializers.ModelSerializer):

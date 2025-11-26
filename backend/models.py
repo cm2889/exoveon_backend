@@ -15,6 +15,8 @@ class SignLog(models.Model):
     def __str__(self):
         return f"SignLog - {self.user.username if self.user else 'Unknown'} - {self.created_at}" 
 
+
+
 class ContactMessage(models.Model):
 
     INVESTMENT_STAGES_CHOICE = (
