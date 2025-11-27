@@ -17,10 +17,12 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
 
-from django.contrib.auth.models import User 
+from django.contrib.auth.models import User
 
-from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy
+import asyncio 
+
+from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer, SessionSerializer, ChatWindowSerializer 
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy, Session, ChatWindow, ScreenshotImage 
 
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
@@ -33,8 +35,171 @@ from googleapiclient.errors import HttpError
 import os
 from uuid import uuid4
 import pytz
+from django.core.files.base import ContentFile
+from agent.brower_agent import screenshot_agent
 
 
+class SessionViewSet(viewsets.ModelViewSet):
+    serializer_class = SessionSerializer
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+    
+    def get_queryset(self):
+        """Return sessions for authenticated users or all active sessions"""
+        if self.request.user.is_authenticated:
+            return Session.objects.filter(user=self.request.user, is_active=True).order_by('-updated_at')
+        return Session.objects.filter(is_active=True, user__isnull=True).order_by('-updated_at')
+    
+    def perform_create(self, serializer):
+        serializer.save(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            created_by=self.request.user if self.request.user.is_authenticated else None
+        )
+    
+    def perform_update(self, serializer):
+        serializer.save(
+            updated_by=self.request.user if self.request.user.is_authenticated else None
+        )
+    
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete session"""
+        instance = self.get_object()
+        instance.is_active = False
+        instance.deleted = True
+        instance.save()
+        return Response({'success': True, 'message': 'Session deleted successfully'}, status=status.HTTP_200_OK)
+
+
+class ChatWindowViewSet(viewsets.ModelViewSet):
+    queryset = ChatWindow.objects.filter(is_active=True)
+    serializer_class = ChatWindowSerializer
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+    http_method_names = ['get', 'post', 'head', 'options']
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            # Validate required fields
+            session_id = request.data.get('session')
+            prompt = request.data.get('prompt')
+            url = request.data.get('url')
+            
+            if not prompt:
+                return Response(
+                    {'success': False, 'error': 'Prompt is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if not url:
+                return Response(
+                    {'success': False, 'error': 'URL is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Handle session: use provided session, find last active session, or create new one
+            session = None
+            
+            if session_id:
+                # User provided a session ID - try to use it
+                try:
+                    session = Session.objects.get(id=session_id, is_active=True)
+                except Session.DoesNotExist:
+                    return Response(
+                        {'success': False, 'error': 'Session not found or inactive'}, 
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            else:
+                # No session ID provided - auto-create or reuse last active session
+                if request.user.is_authenticated:
+                    # For authenticated users, try to get their most recent active session
+                    session = Session.objects.filter(
+                        user=request.user, 
+                        is_active=True
+                    ).order_by('-created_at').first()
+                else:
+                    # For anonymous users, you might want to track by IP or create new each time
+                    # Here we'll create a new session for anonymous users
+                    pass
+                
+                # If no active session found, create a new one
+                if not session:
+                    session = Session.objects.create(
+                        user=request.user if request.user.is_authenticated else None,
+                        name=f"Chat Session - {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                        created_by=request.user if request.user.is_authenticated else None
+                    )
+            
+            # Create ChatWindow instance
+            chat_window_obj = ChatWindow.objects.create(
+                session=session,
+                prompt=prompt,
+                url=url
+            )
+                        
+            # Run screenshot agent asynchronously
+            # n=2 means take maximum 2 screenshots
+            try:
+                image_paths, analysis_report = asyncio.run(
+                    screenshot_agent(prompt=prompt, url=url, n=2)
+                )
+            except Exception as agent_error:
+                chat_window_obj.response = f"Error during analysis: {str(agent_error)}"
+                chat_window_obj.save()
+                return Response(
+                    {'success': False, 'error': f'Screenshot agent failed: {str(agent_error)}'}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Save analysis report to ChatWindow
+            chat_window_obj.response = analysis_report
+            chat_window_obj.save()
+            
+            # Save screenshot images
+            for idx, image_path in enumerate(image_paths):
+                with open(image_path, 'rb') as img_file:
+                    image_content = ContentFile(img_file.read())
+                    screenshot_img = ScreenshotImage.objects.create(
+                        chat_window=chat_window_obj,
+                        image_order=idx + 1
+                    )
+                    screenshot_img.image.save(
+                        f'screenshot_{chat_window_obj.id}_{idx+1}.png',
+                        image_content,
+                        save=True
+                    )
+            
+            # Serialize and return response
+            serializer = self.get_serializer(chat_window_obj)
+            return Response(
+                {
+                    'success': True,
+                    'message': 'Analysis completed successfully',
+                    'data': serializer.data,
+                    'session_id': session.id,
+                    'session_name': session.name,
+                    'is_new_session': session_id is None  # True if auto-created
+                }, 
+                status=status.HTTP_201_CREATED
+            )
+        
+        except Exception as e:
+            return Response(
+                {'success': False, 'error': f'Unexpected error: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def destroy(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED) 
+        
 
 
 @api_view(['POST'])

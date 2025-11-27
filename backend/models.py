@@ -235,3 +235,60 @@ class TermsAndConditions(models.Model):
     class Meta:
         ordering = ['-created_at']
         verbose_name = "Terms and Conditions" 
+
+
+class Session(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True) 
+    name = models.CharField(max_length=255, null=True, blank=True) 
+
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='session_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='session_updated_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.name 
+
+    class Meta:
+        ordering = ['-created_at']
+
+class ChatWindow(models.Model):
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='chatwindow_session')  
+    prompt = models.TextField(null=True, blank=True) 
+    url = models.URLField(null=True, blank=True) 
+
+    response = models.TextField(null=True, blank=True)  
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False) 
+
+    def __str__(self):
+        return self.prompt if self.prompt else f"ChatWindow {self.id}"
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class ScreenshotImage(models.Model):
+    chat_window = models.ForeignKey(ChatWindow, on_delete=models.CASCADE, related_name='screenshots')
+    image = models.ImageField(upload_to='agent/')
+    image_order = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Screenshot {self.image_order} for {self.chat_window}"
+
+    class Meta:
+        ordering = ['image_order', '-created_at']
+        
+
+
+    

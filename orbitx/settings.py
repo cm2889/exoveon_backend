@@ -67,12 +67,6 @@ GOOGLE_SCOPES = [
 
 
 
-CALENDLY_CLIENT_ID = config('calendly_client_id')
-CALENDLY_CLIENT_SECRET = config('calendly_client_secret')
-CALENDLY_TOKEN = config('calendly_token')
-CALENDLY_WEBHOOK_VERIFY_TOKEN = config('calendly_webhook_verify_token')
-CALENDLY_REDIRECT_URI = config('calendly_redirect_uri')
-
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=30),

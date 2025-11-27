@@ -110,3 +110,4 @@ temp.py
 *.sql
 *.json
 /temp
+*.txt

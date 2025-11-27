@@ -4,8 +4,36 @@ from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.utils import timezone
 import pytz
-from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions 
+from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage
 
+
+class SessionSerializer(serializers.ModelSerializer):
+    chat_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Session
+        fields = ['id', 'name', 'user', 'chat_count', 'created_at', 'updated_at', 'is_active']
+        read_only_fields = ['id', 'user', 'chat_count', 'created_at', 'updated_at']
+    
+    def get_chat_count(self, obj):
+        return obj.chatwindow_session.filter(is_active=True).count()
+
+
+class ScreenshotImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScreenshotImage
+        fields = ['id', 'image', 'image_order', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class ChatWindowSerializer(serializers.ModelSerializer):
+    screenshots = ScreenshotImageSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = ChatWindow
+        fields = ['id', 'session', 'prompt', 'url', 'response', 'screenshots', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'response', 'screenshots', 'created_at', 'updated_at']  
+    
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -124,3 +152,5 @@ class TermsAndConditionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = TermsAndConditions
         exclude = ['version', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
+

@@ -10,6 +10,9 @@ from backend.models import (
     EmailSubscribe,
     PrivacyPolicy,
     TermsAndConditions,
+    Session,
+    ChatWindow,
+    ScreenshotImage,
 )
 
 
@@ -73,3 +76,21 @@ class TermsAndConditionsAdmin(admin.ModelAdmin):
     list_display = ('version', 'updated_at', 'is_active')
     search_fields = ('version',)
     list_filter = ('is_active', 'updated_at')
+
+@admin.register(Session)
+class SessionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'name', 'created_at', 'is_active')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('user__username', 'name')
+
+@admin.register(ChatWindow)
+class ChatWindowAdmin(admin.ModelAdmin):
+    list_display = ('session', 'prompt', 'url', 'created_at', 'is_active')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('session__user__username', 'prompt', 'url')
+
+@admin.register(ScreenshotImage)
+class ScreenshotImageAdmin(admin.ModelAdmin):
+    list_display = ('chat_window', 'image_order', 'image', 'created_at', 'is_active')
+    list_filter = ('is_active', 'created_at', 'image_order')
+    search_fields = ('chat_window__prompt', 'chat_window__url')
