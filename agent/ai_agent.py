@@ -310,13 +310,7 @@ def polish_agent(narrative_report: str, persona_note: str, polish_model: str = "
 
 
 
-def analyze_page_and_report(
-    image_paths: List[Path], 
-    page_url: str, 
-    persona_note: str, 
-    do_refinement: bool = False,
-    do_polish: bool = False,
-) -> str:
+def analyze_page_and_report(image_paths: List[Path],  page_url: str, persona_note: str, do_refinement: bool = False, do_polish: bool = False, ) -> str:
     """
     Main analysis pipeline - now generates comprehensive narrative reports like sam.txt.
     
