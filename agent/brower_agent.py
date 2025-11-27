@@ -1,32 +1,3 @@
-"""
-Browser Agent for Website Screenshot and Analysis
-
-This module handles taking screenshots of websites and analyzing them using AI.
-
-Workflow:
-1. User sends POST request to /api/chat-window/ with:
-   - session: Session ID
-   - prompt: Analysis instructions
-   - url: Website URL to analyze
-
-2. screenshot_agent() function:
-   - Opens the website in a browser
-   - Takes 1-2 screenshots (minimum 1, maximum 2)
-   - If page needs 2 screenshots, it scrolls down exactly viewport height
-   - No gap between first and second screenshot
-   - Screenshots saved to media/agent/
-
-3. Analysis:
-   - Screenshots sent to LLM (ai_agent.py)
-   - LLM analyzes UX/UI, accessibility, design issues
-   - Returns detailed analysis report
-
-4. Storage:
-   - ChatWindow stores: session, prompt, url, response
-   - ScreenshotImage stores: images linked to ChatWindow
-   - Response and images returned to frontend via API
-"""
-
 import asyncio 
 import math 
 import time
@@ -85,7 +56,7 @@ async def screenshot_agent(prompt: str, url: str, n: int = 2) -> Tuple[List[Path
         await browser.navigate_to(url)
         
         # Wait for page to fully load
-        await asyncio.sleep(3)
+        await asyncio.sleep(4)
         
         # Get the Playwright page object from browser session
         page = await browser.must_get_current_page()
@@ -146,7 +117,7 @@ async def screenshot_agent(prompt: str, url: str, n: int = 2) -> Tuple[List[Path
                 await page.evaluate(f'() => window.scrollTo(0, {scroll_position})')
                 
                 # Wait for content to load after scroll
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(2)
                 
                 # Take screenshot
                 timestamp = int(time.time() * 1000)

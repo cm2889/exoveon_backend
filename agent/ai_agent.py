@@ -37,7 +37,7 @@ class LLM_agent:
         self.image_paths = image_paths or [] 
 
 
-def call_vision_model(model_key: str, system_prompt: str, user_prompt: str, image_paths: Optional[List[Path]] = None, max_tokens: int = 5000, temperature: float = 0.0,) -> str:
+def call_vision_model(model_key: str, system_prompt: str, user_prompt: str, image_paths: Optional[List[Path]] = None, max_tokens: int = 20000, temperature: float = 0.0,) -> str:
     model_id = MODEL_MAP.get(model_key)  
 
     content_parts = [{"type": "text", "text": user_prompt}] 
@@ -88,13 +88,13 @@ def call_vision_model(model_key: str, system_prompt: str, user_prompt: str, imag
                 except Exception:
                     pass
             compact_messages = [
-                {"role": "system", "content": system_prompt[:2000]},
+                {"role": "system", "content": system_prompt[:10000]},
                 {"role": "user", "content": compact_parts},
             ]
             response = client.chat.completions.create(
                 model=model_id,
                 messages=compact_messages,
-                max_tokens=min(max_tokens, 1500),
+                max_tokens=min(max_tokens, 10000),
                 temperature=temperature,
             )
             return response.choices[0].message.content
@@ -113,8 +113,11 @@ def image_to_datauri_markdown(image_paths: List[Path], max_images: int = 4) -> s
     return "\n".join(chunks)
 
 
-def image_analysis_agent(image_paths: List[Path], page_url: str, persona_note: str, image_model: str = "gemini-2.5-flash-image", max_images_for_model: int = 2 )-> str: 
-
+def image_analysis_agent(image_paths: List[Path], page_url: str, persona_note: str, image_model: str = "gemini-2.5-flash-image", max_images_for_model: int = 6 )-> str: 
+    """
+    Comprehensive UX/UI analysis that produces a detailed narrative report.
+    This approach generates the same detailed output as sam.txt.
+    """
     system_prompt = (
         "You are an elite multidisciplinary UX/UI expert with 20+ years of experience in comprehensive "
         "website analysis, visual design auditing, and accessibility evaluation. Your expertise spans:\n\n"
@@ -170,191 +173,177 @@ def image_analysis_agent(image_paths: List[Path], page_url: str, persona_note: s
         "- Impact Assessment: User experience, conversion, accessibility\n"
         "- Actionable Recommendations: With implementation effort estimate\n"
         "- Positive Observations: What works well\n\n"
-        
-        "TASK: ONLY output a strict, valid JSON object. NO markdown code blocks, NO commentary outside JSON.\n\n"
         "Be thorough yet concise. Reference specific heuristics, principles, and WCAG criteria. "
         "Prioritize by business impact and user pain points. Think like both a designer and a user advocate."
     )
-     
-    user_prompt = (
-        f"ANALYZING: {page_url}\n"
-        f"TOTAL SCREENSHOTS: {len(image_paths)}\n\n"
-        f"I have captured {len(image_paths)} sequential screenshots of the entire webpage from top to bottom. "
-        f"Please analyze ALL {len(image_paths)} images comprehensively. These screenshots show the complete user journey "
-        f"as they scroll through the page. Pay attention to:\n"
-        f"- How visual hierarchy changes across sections\n"
-        f"- Consistency of design patterns throughout the page\n"
-        f"- Navigation and orientation cues for different sections\n"
-        f"- Call-to-action placement and prominence at different scroll depths\n"
-        f"- Overall page flow and user journey coherence\n\n"
-        f"USER REQUEST: {persona_note}\n\n"
-        "INSTRUCTIONS:\n"
-        "1) Read the screenshots below. Produce a single JSON object that follows this schema EXACTLY:\n"
-        "{\n"
-        "  \"page_title\": string or null,\n"
-        "  \"elements\": [\n"
-        "    {\"id\": string, \"type\": string, \"text\": string|null, \"bbox\": [x,y,w,h], \"confidence\": 0.0-1.0}\n"
-        "  ],\n"
-        "  \"visual_flags\": {\"low_contrast\": bool, \"small_cta\": bool, \"crowded_layout\": bool, \"missing_alt\": bool},\n"
-        "  \"ocr_text_snippets\": [\"...\"],\n"
-        "  \"notes\": string (short summary, <= 200 chars)\n"
-        "}\n\n"
-        "2) For element.type use one of: header, nav, hero, button, link, input, form, image, card, footer, text, icon.\n"
-        "3) bbox coordinates should be [x, y, width, height] relative to the page (pixels). If you cannot determine exact numbers, use approximate integers.\n"
-        "4) Put confidence for each element (0.0 to 1.0). Keep OCR snippets to the most important visible texts (max 10).\n"
-        "5) Output MUST be JSON only (no markdown, no commentary).\n\n"
-        "SCREENSHOTS:\n\n"
-    )
 
-    # Do NOT embed base64 images in text; pass images via content parts only.
+    user_prompt = (
+        f"PAGE_URL: {page_url}\n\n"
+        f"PERSONA_NOTE: {persona_note}\n\n"
+        f"Analyze ALL {len(image_paths)} screenshot(s) of this webpage comprehensively.\n\n"
+        "For each screenshot, provide:\n"
+        "- Screenshot Number\n"
+        "- Section/Category (Visual Hierarchy, Usability Issues, Accessibility Gaps, Conversion Blockers, Design Inconsistencies, Mobile Considerations)\n"
+        "- Priority Level with emoji (🔴 Critical | 🟠 High | 🟡 Medium | 🟢 Low)\n"
+        "- Specific Location (which element/section)\n"
+        "- Issue Description (with principle/standard references)\n"
+        "- Impact Assessment\n"
+        "- Actionable Recommendations (with effort estimate)\n\n"
+        "Include Positive Observations throughout.\n"
+        "End with an Overall Summary.\n\n"
+        "SCREENSHOTS TO ANALYZE:\n\n"
+    )
+  
+    # Limit images for model context
     limited_images = image_paths[:max_images_for_model]
+
+    print(f"[DEBUG] Sending {len(limited_images)} images to vision model for comprehensive narrative analysis...")
 
     raw_response = call_vision_model(
         model_key=image_model,
         system_prompt=system_prompt,
-        user_prompt=user_prompt[:4000],
+        user_prompt=user_prompt,
         image_paths=limited_images,
-        max_tokens=1500,
-        temperature=0.0,
+        max_tokens=16000,  # Increased for detailed narrative
+        temperature=0.1,  # Slight temperature for natural writing
     ) 
 
-    parsed_response = None 
-    try:
-        parsed_response = json.loads(raw_response)
-    except Exception as e:
-        m = re.search(r"\{.*\}", raw_response, re.DOTALL) 
-
-        if m:
-            try:
-                parsed_response = json.loads(m.group(0)) 
-            except Exception:
-                parsed_response = {"_raw": raw_response} 
-        else:
-            parsed_response = {"_raw": raw_response} 
-    
-    parsed_response = json.dumps(parsed_response, indent=2) 
-
-    return parsed_response 
+    print(f"[DEBUG] Received comprehensive analysis ({len(raw_response)} chars)")
+    return raw_response 
 
 
 
-def recommendation_agent(structured_json: Dict[str, any], persona_note: str, fast_text_model: str = "grok-4.1-fast:free", max_issues: int = 4)-> str:
+def recommendation_agent(narrative_analysis: str, persona_note: str, fast_text_model: str = "grok-4.1-fast:free")-> str:
+    """
+    This agent is now optional - the narrative analysis is already comprehensive.
+    Use this only if you want a second-pass refinement or summarization.
+    """
     system_prompt = (
-        "You are a pragmatic senior UX/UI consultant with 20+ years of experience in digital product design, "
-        "conversion rate optimization, and accessibility compliance.\n\n"
+        "You are a pragmatic senior UX/UI consultant reviewing a comprehensive UI/UX analysis report.\n\n"
         
         "YOUR MISSION:\n"
-        "Transform raw UI analysis data into actionable, prioritized recommendations that drive measurable improvements "
-        "in user experience, accessibility compliance, and business conversions.\n\n"
+        "Enhance and refine the existing analysis by:\n"
+        "- Ensuring all issues cite specific principles (Nielsen, WCAG, Fitts, Hick, Miller, Jakob)\n"
+        "- Verifying severity tags are accurate (🔴 Critical | 🟠 High | 🟡 Medium | 🟢 Low)\n"
+        "- Confirming actionable recommendations with effort estimates\n"
+        "- Maintaining the comprehensive, narrative format\n"
+        "- Preserving all positive observations\n\n"
         
-        "EVALUATION FRAMEWORK:\n"
-        "Apply these proven principles to assess and prioritize issues:\n"
-        "- Nielsen's Usability Heuristics - identify violations and their severity\n"
-        "- WCAG 2.2 AA/AAA Standards - flag accessibility barriers (contrast, semantics, keyboard, ARIA)\n"
-        "- Gestalt Principles - evaluate visual grouping and information hierarchy\n"
-        "- Fitts's Law - assess interactive target sizing and placement\n"
-        "- Hick's Law - identify choice overload and decision paralysis points\n"
-        "- Miller's Law - spot cognitive overload (too many options/items)\n"
-        "- Jakob's Law - flag deviations from established web conventions\n"
-        "- Conversion Best Practices - evaluate CTA clarity, trust signals, friction points\n\n"
+        "DO NOT:\n"
+        "- Remove or downplay any findings\n"
+        "- Convert to JSON or executive summary format\n"
+        "- Add new issues not present in the original analysis\n"
+        "- Change the overall structure or tone\n\n"
         
-        "PRIORITIZATION CRITERIA:\n"
-        "- HIGH: Blocks conversions, violates WCAG, causes user abandonment\n"
-        "- MEDIUM: Reduces efficiency, creates confusion, inconsistent patterns\n"
-        "- LOW: Minor polish, nice-to-have improvements, edge cases\n\n"
-        
-        "CRITICAL: Output ONLY a valid JSON object. NO markdown, NO prose before or after JSON.\n\n"
-        
-        "Each recommendation MUST include:\n"
-        "- Specific, actionable fix with implementation guidance\n"
-        "- Clear rationale citing relevant principle/standard\n"
-        "- Accurate severity and effort assessment\n"
-        "- Business/UX impact explanation"
+        "OUTPUT: Return the refined analysis in the same comprehensive narrative format."
     )
 
     user_prompt = (
-        "INPUT_OBSERVATIONS:\n"
-        f"{json.dumps(structured_json)}\n\n"
-        "TASK:\n"
-        "1) Return a JSON object with keys:\n"
-        "   - issues: array of {title, reason, severity (low|med|high), suggested_fix, estimated_effort (low|med|high)}\n"
-        "   - positive: 1-sentence positive note\n"
-        "   - confidence: 0.0-1.0\n"
-        f"2) Limit issues to at most {max_issues}. Prioritize by impact to conversions and accessibility.\n"
         f"PERSONA_NOTE: {persona_note}\n\n"
-        "OUTPUT JSON ONLY."
+        "ORIGINAL COMPREHENSIVE ANALYSIS:\n\n"
+        f"{narrative_analysis}\n\n"
+        "Please review and enhance this analysis while maintaining its comprehensive narrative format."
     )
+
+    print("[DEBUG] Running optional recommendation refinement...")
 
     raw = call_vision_model(
         model_key=fast_text_model,
         system_prompt=system_prompt,
         user_prompt=user_prompt,
-        image_paths=None,  # text-only recommendation generation
-        max_tokens=800,
+        image_paths=None,
+        max_tokens=16000,
         temperature=0.1,
     )
 
-    # Try parse
-    try:
-        result_json = json.loads(raw.strip())
-        return json.dumps(result_json, indent=2)
-    except Exception:
-        return raw
+    print(f"[DEBUG] Refinement complete ({len(raw)} chars)")
+    return raw
     
 
-def polish_agent(rough_report: str, persona_note: str, polish_model: str = "gpt-4o-mini", report_tone: str = "formal, professional",) -> str:
+def polish_agent(narrative_report: str, persona_note: str, polish_model: str = "gpt-4o-mini", report_tone: str = "formal, professional",) -> str:
+    """
+    Optional polishing pass - only use if the narrative needs minor editorial improvements.
+    The comprehensive analysis from image_analysis_agent is already detailed and well-structured.
+    """
     system_prompt = (
-        "You are an expert UX writer, design strategist, and client communication specialist with deep expertise "
-        "in translating technical UX/UI findings into compelling, actionable business recommendations.\n\n"
+        "You are an expert UX writer and editor specializing in comprehensive UI/UX analysis reports.\n\n"
         
         "YOUR MISSION:\n"
-        "Transform raw technical analysis into a polished, executive-ready report (500-800 words) that:\n"
-        "- Communicates clearly to both technical and non-technical stakeholders\n"
-        "- Justifies each recommendation with established design principles\n"
-        "- Quantifies impact on business metrics (conversion, engagement, accessibility compliance)\n"
-        "- Provides clear implementation roadmap with effort estimates\n\n"
-        
-        "WRITING GUIDELINES:\n"
-        "- Start with executive summary highlighting top 3-5 priority items\n"
-        "- Group recommendations by category (Visual Design, Usability, Accessibility, Conversion)\n"
-        "- Use concrete, specific language ('Increase CTA button size to 44px' not 'make buttons bigger')\n"
-        "- Reference standards naturally ('WCAG 2.2 contrast requirements', 'Nielsen's consistency heuristic')\n"
-        "- Include severity tags: 🔴 Critical | 🟠 High | 🟡 Medium | 🟢 Low\n"
-        "- Balance critique with positive observations to maintain credibility\n\n"
+        "Polish the existing comprehensive analysis for clarity and professionalism while:\n"
+        "- Maintaining the detailed, narrative format with all sections\n"
+        "- Preserving ALL technical findings, severity tags, and recommendations\n"
+        "- Ensuring consistent use of design principles and standards references\n"
+        "- Improving readability without removing detail\n"
+        "- Keeping all positive observations\n\n"
         
         "CRITICAL RULES:\n"
-        "- PRESERVE all factual findings - do NOT invent new issues\n"
-        "- MAINTAIN technical accuracy while improving readability\n"
-        "- DO NOT remove or downplay accessibility issues\n"
-        "- DO NOT exaggerate severity or business impact\n"
-        "- Each recommendation must have: Issue, Impact, Fix, Effort\n\n"
+        "- DO NOT convert to executive summary format\n"
+        "- DO NOT remove or condense findings\n"
+        "- DO NOT change severity assessments\n"
+        "- DO NOT add new issues\n"
+        "- MAINTAIN the comprehensive narrative structure\n\n"
         
         "TONE:\n"
-        "Professional yet approachable. Expert but not condescending. Data-driven but human-centered. "
-        "Balance urgency (for critical issues) with encouragement (for strengths)."
+        f"{report_tone} - Professional yet approachable. Expert but not condescending."
     )
 
     user_prompt = (
-        f"INPUT (do not invent new issues):\n{rough_report}\n\n"
         f"PERSONA: {persona_note}\n\n"
-        f"DELIVERABLE: A polished client report in {report_tone} tone. Keep each recommendation short and include the severity tag."
+        "COMPREHENSIVE ANALYSIS TO POLISH:\n\n"
+        f"{narrative_report}\n\n"
+        "Please polish this analysis for clarity and professionalism while preserving all content and structure."
     )
 
-    raw = call_vision_model(model_key=polish_model, system_prompt=system_prompt,
+    print("[DEBUG] Running optional polish pass...")
+
+    raw = call_vision_model(
+        model_key=polish_model,
+        system_prompt=system_prompt,
         user_prompt=user_prompt,
-        image_paths=None,  # polishing is text-only
-        max_tokens=1200,
+        image_paths=None,
+        max_tokens=16000,
         temperature=0.2,
     )
 
+    print(f"[DEBUG] Polish complete ({len(raw)} chars)")
     return raw
 
 
 
-def analyze_page_and_report(image_paths: List[Path], page_url: str, persona_note: str, do_polish: bool = False,) -> Dict[str, Any]:
+def analyze_page_and_report(
+    image_paths: List[Path], 
+    page_url: str, 
+    persona_note: str, 
+    do_refinement: bool = False,
+    do_polish: bool = False,
+) -> str:
+    """
+    Main analysis pipeline - now generates comprehensive narrative reports like sam.txt.
+    
+    Args:
+        image_paths: List of screenshot paths to analyze
+        page_url: URL being analyzed
+        persona_note: Context about the persona/focus area
+        do_refinement: Optional second-pass to refine findings (rarely needed)
+        do_polish: Optional editorial polish (rarely needed)
+    
+    Returns:
+        Comprehensive narrative analysis report
+    """
+    
+    print(f"\n{'='*80}")
+    print(f"STARTING COMPREHENSIVE UX/UI ANALYSIS")
+    print(f"{'='*80}")
+    print(f"URL: {page_url}")
+    print(f"Screenshots: {len(image_paths)}")
+    print(f"Persona: {persona_note}")
+    print(f"{'='*80}\n")
   
-    # 1) Image analysis (expensive multimodal)
-    image_analysis = image_analysis_agent(
+    # 1) Comprehensive narrative analysis (primary output - matches sam.txt approach)
+    print("STAGE 1: Comprehensive Visual Analysis")
+    print("-" * 80)
+    
+    comprehensive_analysis = image_analysis_agent(
         image_paths=image_paths,
         page_url=page_url,
         persona_note=persona_note,
@@ -362,28 +351,75 @@ def analyze_page_and_report(image_paths: List[Path], page_url: str, persona_note
         max_images_for_model=6,
     )
 
-    # 2) Fast text recommendation model
-    rough_recommendations = recommendation_agent(
-        structured_json=image_analysis,
-        persona_note=persona_note,
-        fast_text_model="grok-4.1-fast:free",
-        max_issues=6,
-    )
+    print(f"\n✓ Analysis complete: {len(comprehensive_analysis)} characters")
+    print(f"Preview: {comprehensive_analysis[:200]}...\n")
+
+    # 2) Optional refinement pass (usually not needed - the first pass is comprehensive)
+    if do_refinement:
+        print("STAGE 2: Refinement Pass (Optional)")
+        print("-" * 80)
+        
+        refined_analysis = recommendation_agent(
+            narrative_analysis=comprehensive_analysis,
+            persona_note=persona_note,
+            fast_text_model="grok-4.1-fast:free",
+        )
+        
+        print(f"✓ Refinement complete: {len(refined_analysis)} characters\n")
+        comprehensive_analysis = refined_analysis
  
+    # 3) Optional polish pass (usually not needed - for final editorial touch only)
     if do_polish:
-        final_report_text = polish_agent(
-            rough_report=rough_recommendations,
+        print("STAGE 3: Editorial Polish (Optional)")
+        print("-" * 80)
+        
+        polished_analysis = polish_agent(
+            narrative_report=comprehensive_analysis,
             persona_note=persona_note,
             polish_model="gpt-4o-mini",
             report_tone="formal, professional",
         )
+        
+        print(f"✓ Polish complete: {len(polished_analysis)} characters\n")
+        comprehensive_analysis = polished_analysis
 
-    if final_report_text:
-        report =  final_report_text 
-    else:
-        report = rough_recommendations   
+    print(f"\n{'='*80}")
+    print(f"ANALYSIS PIPELINE COMPLETE")
+    print(f"{'='*80}")
+    print(f"Final report length: {len(comprehensive_analysis)} characters")
+    print(f"{'='*80}\n")
+
+    return comprehensive_analysis 
+
+
+# Debug/Test helper: run end-to-end analysis with sample data
+def debug_run(image_paths: List[Path], page_url: str, persona_note: str, do_refinement: bool = False, do_polish: bool = False) -> str:
+    """
+    Quick test function to validate the entire pipeline.
+    Returns the final comprehensive analysis report.
+    """
+    print("\n" + "="*80)
+    print("DEBUG RUN - Testing Analysis Pipeline")
+    print("="*80 + "\n")
     
-    return report 
+    result = analyze_page_and_report(
+        image_paths=image_paths,
+        page_url=page_url,
+        persona_note=persona_note,
+        do_refinement=do_refinement,
+        do_polish=do_polish,
+    )
+    
+    print("\n" + "="*80)
+    print("DEBUG RUN COMPLETE")
+    print("="*80)
+    print(f"\nFinal report preview (first 500 chars):\n")
+    print(result[:500])
+    print("\n...")
+    print(f"\nTotal length: {len(result)} characters")
+    print("="*80 + "\n")
+    
+    return result
 
        
     
