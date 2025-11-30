@@ -37,6 +37,8 @@ from uuid import uuid4
 import pytz
 from django.core.files.base import ContentFile
 from agent.brower_agent import screenshot_agent
+from agent.app_agent import analyze_app_and_report
+from agent.url_detector import detect_url_type, normalize_url
 
 
 class SessionViewSet(viewsets.ModelViewSet):
@@ -99,6 +101,10 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            # Normalize URL and detect type
+            url = normalize_url(url)
+            url_type, identifier = detect_url_type(url)
+            
             # Handle session: use provided session, find last active session, or create new one
             session = None
             
@@ -136,52 +142,165 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
                 prompt=prompt,
                 url=url
             )
-                        
-            # Run screenshot agent asynchronously
-            # n=2 means take maximum 2 screenshots
-            try:
-                image_paths, analysis_report = asyncio.run(
-                    screenshot_agent(prompt=prompt, url=url, n=2)
-                )
-            except Exception as agent_error:
-                chat_window_obj.response = f"Error during analysis: {str(agent_error)}"
-                chat_window_obj.save()
-                return Response(
-                    {'success': False, 'error': f'Screenshot agent failed: {str(agent_error)}'}, 
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
             
-            # Save analysis report to ChatWindow
-            chat_window_obj.response = analysis_report
-            chat_window_obj.save()
-            
-            # Save screenshot images
-            for idx, image_path in enumerate(image_paths):
-                with open(image_path, 'rb') as img_file:
-                    image_content = ContentFile(img_file.read())
-                    screenshot_img = ScreenshotImage.objects.create(
-                        chat_window=chat_window_obj,
-                        image_order=idx + 1
+            # Route to appropriate agent based on URL type
+            if url_type == 'app':
+                # Google Play Store app - use app reviews agent
+                try:
+                    # Get max_reviews from request or default to 500
+                    max_reviews = request.data.get('max_reviews', 500)
+                    if not isinstance(max_reviews, int) or max_reviews < 1:
+                        max_reviews = 500
+                    max_reviews = min(max_reviews, 1000)  # Cap at 1000
+                    
+                    # Create output directory in media/agent for temporary chart generation
+                    from pathlib import Path
+                    output_dir = Path(settings.MEDIA_ROOT) / 'agent' / f'app_analysis_{chat_window_obj.id}'
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Run app analysis
+                    result = analyze_app_and_report(
+                        app_name=identifier,
+                        max_reviews=max_reviews,
+                        output_dir=str(output_dir)
                     )
-                    screenshot_img.image.save(
-                        f'screenshot_{chat_window_obj.id}_{idx+1}.png',
-                        image_content,
-                        save=True
+                    
+                    if not result.get('success'):
+                        error_msg = result.get('error', 'Unknown error during app analysis')
+                        chat_window_obj.response = f"Error during analysis: {error_msg}"
+                        chat_window_obj.save()
+                        return Response(
+                            {'success': False, 'error': error_msg}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
+                    
+                    # Store structured analysis data in database (JSON field)
+                    analysis_data = result.get('analysis_data', {})
+                    chat_window_obj.analysis_data = analysis_data
+                    
+                    # Generate a human-readable summary for the response field
+                    sentiment = analysis_data.get('sentiment_summary', {})
+                    reviews_count = result.get('reviews_analyzed', 0)
+                    
+                    response_summary = f"""App Analysis Complete
+                    
+                    App: {identifier}
+                    Reviews Analyzed: {reviews_count}
+
+                    Sentiment Overview:
+                    - Positive: {sentiment.get('positive_count', 0)} ({sentiment.get('positive_percentage', 0):.1f}%)
+                    - Negative: {sentiment.get('negative_count', 0)} ({sentiment.get('negative_percentage', 0):.1f}%)
+                    - Neutral: {sentiment.get('neutral_count', 0)} ({sentiment.get('neutral_percentage', 0):.1f}%)
+
+                    Executive Summary:
+                    {analysis_data.get('executive_summary', 'Analysis completed successfully.')}
+
+                    See charts and detailed analysis in the structured data.
+                    """
+                    
+                    chat_window_obj.response = response_summary
+                    chat_window_obj.save()
+                    
+                    # Save chart images to ScreenshotImage model
+                    chart_paths = result.get('chart_paths', {})
+                    for idx, (chart_name, chart_path) in enumerate(chart_paths.items(), start=1):
+                        chart_file = Path(chart_path)
+                        if chart_file.exists():
+                            with open(chart_file, 'rb') as img_file:
+                                image_content = ContentFile(img_file.read())
+                                screenshot_img = ScreenshotImage.objects.create(
+                                    chat_window=chat_window_obj,
+                                    image_order=idx
+                                )
+                                screenshot_img.image.save(
+                                    f'chart_{chat_window_obj.id}_{chart_name}.png',
+                                    image_content,
+                                    save=True
+                                )
+                    
+                    # Clean up temporary JSON/text files (keep only images in database)
+                    import shutil
+                    for file_to_remove in ['analysis_report.md', 'analysis_data.json', 'raw_analysis.txt']:
+                        file_path = output_dir / file_to_remove
+                        if file_path.exists():
+                            file_path.unlink()
+                    
+                    # Serialize and return response
+                    serializer = self.get_serializer(chat_window_obj)
+                    return Response(
+                        {
+                            'success': True,
+                            'message': 'App analysis completed successfully',
+                            'data': serializer.data,
+                            'session_id': session.id,
+                            'session_name': session.name,
+                            'is_new_session': session_id is None,
+                            'analysis_type': 'app',
+                            'app_id': identifier,
+                            'reviews_analyzed': reviews_count,
+                            'charts_saved': len(chart_paths)
+                        }, 
+                        status=status.HTTP_201_CREATED
+                    )
+                    
+                except Exception as agent_error:
+                    import traceback
+                    error_detail = traceback.format_exc()
+                    chat_window_obj.response = f"Error during app analysis: {str(agent_error)}"
+                    chat_window_obj.save()
+                    return Response(
+                        {'success': False, 'error': f'App analysis agent failed: {str(agent_error)}'}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
             
-            # Serialize and return response
-            serializer = self.get_serializer(chat_window_obj)
-            return Response(
-                {
-                    'success': True,
-                    'message': 'Analysis completed successfully',
-                    'data': serializer.data,
-                    'session_id': session.id,
-                    'session_name': session.name,
-                    'is_new_session': session_id is None  # True if auto-created
-                }, 
-                status=status.HTTP_201_CREATED
-            )
+            else:
+                # Regular website - use browser screenshot agent
+                try:
+                    # n=2 means take maximum 2 screenshots
+                    image_paths, analysis_report = asyncio.run(
+                        screenshot_agent(prompt=prompt, url=url, n=2)
+                    )
+                    
+                    # Save analysis report to ChatWindow
+                    chat_window_obj.response = analysis_report
+                    chat_window_obj.save()
+                    
+                    # Save screenshot images
+                    for idx, image_path in enumerate(image_paths):
+                        with open(image_path, 'rb') as img_file:
+                            image_content = ContentFile(img_file.read())
+                            screenshot_img = ScreenshotImage.objects.create(
+                                chat_window=chat_window_obj,
+                                image_order=idx + 1
+                            )
+                            screenshot_img.image.save(
+                                f'screenshot_{chat_window_obj.id}_{idx+1}.png',
+                                image_content,
+                                save=True
+                            )
+                    
+                    # Serialize and return response
+                    serializer = self.get_serializer(chat_window_obj)
+                    return Response(
+                        {
+                            'success': True,
+                            'message': 'Website analysis completed successfully',
+                            'data': serializer.data,
+                            'session_id': session.id,
+                            'session_name': session.name,
+                            'is_new_session': session_id is None,
+                            'analysis_type': 'website'
+                        }, 
+                        status=status.HTTP_201_CREATED
+                    )
+                    
+                except Exception as agent_error:
+                    chat_window_obj.response = f"Error during analysis: {str(agent_error)}"
+                    chat_window_obj.save()
+                    return Response(
+                        {'success': False, 'error': f'Screenshot agent failed: {str(agent_error)}'}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
         
         except Exception as e:
             return Response(

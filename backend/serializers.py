@@ -31,8 +31,8 @@ class ChatWindowSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ChatWindow
-        fields = ['id', 'session', 'prompt', 'url', 'response', 'screenshots', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'response', 'screenshots', 'created_at', 'updated_at']  
+        fields = ['id', 'session', 'prompt', 'url', 'response', 'analysis_data', 'screenshots', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'response', 'analysis_data', 'screenshots', 'created_at', 'updated_at']  
     
 
 class ContactMessageSerializer(serializers.ModelSerializer):

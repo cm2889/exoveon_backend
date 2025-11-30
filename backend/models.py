@@ -260,6 +260,9 @@ class ChatWindow(models.Model):
     url = models.URLField(null=True, blank=True) 
 
     response = models.TextField(null=True, blank=True)  
+    
+    # Store structured app analysis data (sentiment, ratings, issues, recommendations, etc.)
+    analysis_data = models.JSONField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

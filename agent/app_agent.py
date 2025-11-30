@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from decouple import config
 from openai import OpenAI
 
-from reviews_collector import find_app_id_by_name, fetch_all_reviews
+from agent.reviews_collector import find_app_id_by_name, fetch_all_reviews
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -171,8 +171,7 @@ def app_review_analysis(reviews_list: List[Dict[str, Any]]) -> Dict[str, Any]:
             "category": "<Technical|UX|Feature|Privacy|Payment|Other>",
             "issue": "<brief description>",
             "severity": "<HIGH|MEDIUM|LOW>",
-            "frequency": <int>,
-            "example_reviews": [<review indices>]
+            "frequency": <int>
             }
         ],
         "positive_highlights": [
