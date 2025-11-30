@@ -120,8 +120,6 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
                         is_active=True
                     ).order_by('-created_at').first()
                 else:
-                    # For anonymous users, you might want to track by IP or create new each time
-                    # Here we'll create a new session for anonymous users
                     pass
                 
                 # If no active session found, create a new one

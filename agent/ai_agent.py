@@ -114,10 +114,7 @@ def image_to_datauri_markdown(image_paths: List[Path], max_images: int = 4) -> s
 
 
 def image_analysis_agent(image_paths: List[Path], page_url: str, persona_note: str, image_model: str = "gemini-2.5-flash-image", max_images_for_model: int = 6 )-> str: 
-    """
-    Comprehensive UX/UI analysis that produces a detailed narrative report.
-    This approach generates the same detailed output as sam.txt.
-    """
+  
     system_prompt = (
         "You are an elite multidisciplinary UX/UI expert with 20+ years of experience in comprehensive "
         "website analysis, visual design auditing, and accessibility evaluation. Your expertise spans:\n\n"
