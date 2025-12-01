@@ -9,13 +9,13 @@ from django.core.exceptions import ValidationError
 import pytz
 from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage, WaitList 
 
-
 EMAIL_RE = re.compile(r"^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$")
 
 DEFAULT_DISALLOWED_DOMAINS = {
     "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
     "live.com", "aol.com", "icloud.com", "mail.com", "gmx.com",
 }
+
 DISALLOWED = getattr(settings, "BUSINESS_EMAIL_DISALLOWED_DOMAINS", DEFAULT_DISALLOWED_DOMAINS)
 
 class WaitListSerializer(serializers.ModelSerializer):

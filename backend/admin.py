@@ -13,8 +13,14 @@ from backend.models import (
     Session,
     ChatWindow,
     ScreenshotImage,
+    WaitList, 
 )
 
+@admin.register(WaitList)
+class WaitListAdmin(admin.ModelAdmin):
+    list_display = ('business_mail', 'created_at', 'is_active')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('business_mail',)
 
 @admin.register(SignLog)
 class SignLogAdmin(admin.ModelAdmin):
