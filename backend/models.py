@@ -249,6 +249,9 @@ class WaitList(models.Model):
 
     def __str__(self):
         return self.business_mail 
+    
+    class Meta:
+        ordering = ['-created_at'] 
 
 
 class Session(models.Model):
