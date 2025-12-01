@@ -1,15 +1,36 @@
+import re 
+from pydantic import validate_email
 from rest_framework import serializers 
 from django.contrib.auth.models import User 
 from django.contrib.auth.password_validation import validate_password 
 from django.conf import settings
 from django.utils import timezone
+from django.core.exceptions import ValidationError 
 import pytz
 from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage, WaitList 
+
+
+EMAIL_RE = re.compile(r"^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$")
+
+DEFAULT_DISALLOWED_DOMAINS = {
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+    "live.com", "aol.com", "icloud.com", "mail.com", "gmx.com",
+}
+DISALLOWED = getattr(settings, "BUSINESS_EMAIL_DISALLOWED_DOMAINS", DEFAULT_DISALLOWED_DOMAINS)
 
 class WaitListSerializer(serializers.ModelSerializer):
     class Meta:
         model = WaitList
         exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+
+    def validate_business_mail(self, value):
+        email = (value or "").strip().lower()
+        if not EMAIL_RE.match(email):
+            raise serializers.ValidationError("Enter a valid email address.")
+        domain = email.split("@", 1)[1]
+        if domain in DISALLOWED:
+            raise serializers.ValidationError("Please use a business email address.")
+        return email
 
 
 class SessionSerializer(serializers.ModelSerializer):
