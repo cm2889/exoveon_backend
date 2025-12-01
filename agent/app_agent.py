@@ -16,7 +16,6 @@ client = OpenAI(
     api_key=config("OPENROUTER_API_KEY"),
 )
 
-
 MODEL_MAP: Dict[str, str] = {
     "gemma-3-27b-it-free": "google/gemma-3-27b-it:free",
     "gemma-3-12b-it:free": "google/gemma-3-12b-it:free",

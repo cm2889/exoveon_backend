@@ -4,7 +4,12 @@ from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.utils import timezone
 import pytz
-from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage
+from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage, WaitList 
+
+class WaitListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WaitList
+        exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
 
 class SessionSerializer(serializers.ModelSerializer):

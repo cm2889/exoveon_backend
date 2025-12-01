@@ -10,6 +10,7 @@ router.register(r'contact-messages', views.ContactMessageViewSet, basename='cont
 
 router.register(r'book-calendar', views.BookCalendarViewSet, basename='book-calendar')
 router.register(r'email-subscribe', views.EmailSubscribeViewSet, basename='email-subscribe')
+router.register(r'wait-lists', views.WaitListViewSet, basename='wait-list') 
 router.register(r'blog-categories', views.BlogCategoryViewSet, basename='blog-category')
 router.register(r'blog-posts', views.BlogPostViewSet, basename='blog-post')
 router.register(r'privacy-policy', views.PrivacyPolicyViewSet, basename='privacy-policy')

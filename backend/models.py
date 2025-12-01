@@ -237,6 +237,20 @@ class TermsAndConditions(models.Model):
         verbose_name = "Terms and Conditions" 
 
 
+class WaitList(models.Model):
+    business_mail = models.EmailField(max_length=255) 
+
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='waitlist_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='waitlist_updated_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False) 
+
+    def __str__(self):
+        return self.business_mail 
+
+
 class Session(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True) 
     name = models.CharField(max_length=255, null=True, blank=True) 
