@@ -16,10 +16,12 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework_simplejwt.authentication import JWTAuthentication 
 from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
+from pathlib import Path
 
 from django.contrib.auth.models import User
 
-import asyncio 
+import asyncio
+import traceback 
 
 from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer, SessionSerializer, ChatWindowSerializer, WaitListSerializer  
 from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy, Session, ChatWindow, ScreenshotImage, WaitList 
@@ -39,6 +41,7 @@ from django.core.files.base import ContentFile
 from agent.brower_agent import screenshot_agent
 from agent.app_agent import analyze_app_and_report
 from agent.url_detector import detect_url_type, normalize_url
+from django.http import FileResponse, HttpResponse
 
 
 class SessionViewSet(viewsets.ModelViewSet):
@@ -154,7 +157,6 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
                     max_reviews = min(max_reviews, 1000)  # Cap at 1000
                     
                     # Create output directory in media/agent for temporary chart generation
-                    from pathlib import Path
                     output_dir = Path(settings.MEDIA_ROOT) / 'agent' / f'app_analysis_{chat_window_obj.id}'
                     output_dir.mkdir(parents=True, exist_ok=True)
                     

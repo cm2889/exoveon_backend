@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-kp!xwwv*dj5m=vwrd_5^@42#^m*j9493-=8*7pyd7h_wb6vwzh"
 
-DEBUG = True
+DEBUG = False 
 
 ALLOWED_HOSTS = ['*']
 
@@ -207,10 +207,21 @@ CKEDITOR_CONFIGS = {
 }
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('GMAIL_CLIENT_ID')
-EMAIL_HOST_PASSWORD = config('GMAIL_PASSWORD')
-DEFAULT_FROM_EMAIL = config('GMAIL_CLIENT_ID')
+
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = config('GMAIL_CLIENT_ID')
+# EMAIL_HOST_PASSWORD = config('GMAIL_PASSWORD')
+# DEFAULT_FROM_EMAIL = config('GMAIL_CLIENT_ID')
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "mail.privateemail.com"
+EMAIL_PORT = 465                   
+EMAIL_USE_SSL = True                
+EMAIL_USE_TLS = False           
+EMAIL_HOST_USER = 'hello@orbitx.design'
+EMAIL_HOST_PASSWORD = 'orbitx!23'
+DEFAULT_FROM_EMAIL = 'hello@orbitx.design'

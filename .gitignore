@@ -111,3 +111,4 @@ temp.py
 *.json
 /temp
 *.txt
+/management 

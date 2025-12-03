@@ -494,6 +494,7 @@ def analyze_app_and_report(app_name: str, max_reviews: int = 1000, output_dir: s
         if report_text.startswith("Report generation via AI failed"):
             report_text = generate_text_report(analysis_data, chart_paths)
         report_path = output_path / "analysis_report.md"
+        
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report_text)
         json_path = output_path / "analysis_data.json"
@@ -509,30 +510,5 @@ def analyze_app_and_report(app_name: str, max_reviews: int = 1000, output_dir: s
             "chart_paths": chart_paths,
         }
     except Exception as e:
-        error_msg = f"Error during analysis: {e}"
-        import traceback
-        traceback.print_exc()
-        return {"error": error_msg}
+        pass 
 
-
-# EXAMPLE USAGE
-if __name__ == "__main__":
-    # Example: Analyze City Touch banking app
-    result = analyze_app_and_report(
-        app_name="com.thecitybank.citytouch",
-        max_reviews=500,  
-        output_dir="./analysis_output"
-    )
-    
-    if result.get("success"):
-        print("\n" + "="*60)
-        print("ANALYSIS COMPLETE")
-        print("="*60)
-        print(f"Reviews Analyzed: {result['reviews_analyzed']}")
-        print(f"Report: {result['report_path']}")
-        print(f"JSON Data: {result['json_path']}")
-        print("\nGenerated Charts:")
-        for chart_name, path in result.get('chart_paths', {}).items():
-            print(f"  - {chart_name}: {path}")
-    else:
-        print(f"\nAnalysis failed: {result.get('error')}")
