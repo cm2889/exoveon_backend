@@ -38,3 +38,25 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 
         # Write permissions are only allowed to the owner of the object.
         return obj.created_by == request.user
+
+
+class IsOwnerOnly(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        # Superusers can access everything
+        if request.user and request.user.is_superuser:
+            return True
+
+        owner = None
+
+        # Most models use created_by
+        owner = getattr(obj, 'created_by', None)
+        if owner is None:
+            # Some models use a direct user field
+            owner = getattr(obj, 'user', None)
+        if owner is None:
+            # Nested ownership via related session
+            session = getattr(obj, 'session', None)
+            if session is not None:
+                owner = getattr(session, 'user', None) or getattr(session, 'created_by', None)
+
+        return owner is not None and owner == request.user

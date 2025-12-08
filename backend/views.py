@@ -1,5 +1,11 @@
+import os
+import pytz
+import asyncio
+import traceback 
+from uuid import uuid4
 from django.utils import timezone 
 from datetime import timedelta
+from pathlib import Path
 from django.contrib.auth import authenticate 
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required 
@@ -16,46 +22,42 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework_simplejwt.authentication import JWTAuthentication 
 from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
-from pathlib import Path
 
 from django.contrib.auth.models import User
-
-import asyncio
-import traceback 
-
 from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer, SessionSerializer, ChatWindowSerializer, WaitListSerializer  
 from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy, Session, ChatWindow, ScreenshotImage, WaitList 
 
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
-from core.permissions import IsSuperUserOrPostAndRead, IsOwnerOrReadOnly
-
+from core.permissions import IsSuperUserOrPostAndRead, IsOwnerOrReadOnly, IsOwnerOnly 
 from django.conf import settings
 from google.oauth2.service_account import Credentials as ServiceAccountCredentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import os
-from uuid import uuid4
-import pytz
 from django.core.files.base import ContentFile
 from agent.brower_agent import screenshot_agent
 from agent.app_agent import analyze_app_and_report
 from agent.url_detector import detect_url_type, normalize_url
 from django.http import FileResponse, HttpResponse
+from django.db.models import Q
 
 
 class SessionViewSet(viewsets.ModelViewSet):
     serializer_class = SessionSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOnly]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
     
     def get_queryset(self):
-        """Return sessions for authenticated users or all active sessions"""
-        if self.request.user.is_authenticated:
-            return Session.objects.filter(user=self.request.user, is_active=True).order_by('-updated_at')
-        return Session.objects.filter(is_active=True, user__isnull=True).order_by('-updated_at')
+        """Return sessions for authenticated users or all active sessions; superusers see all."""
+        user = self.request.user
+        qs = Session.objects.filter(is_active=True).order_by('-updated_at')
+        if not user.is_authenticated:
+            return qs.filter(user__isnull=True)
+        if user.is_superuser:
+            return qs
+        return qs.filter(user=user)
     
     def perform_create(self, serializer):
         serializer.save(
@@ -80,10 +82,21 @@ class SessionViewSet(viewsets.ModelViewSet):
 class ChatWindowViewSet(viewsets.ModelViewSet):
     queryset = ChatWindow.objects.filter(is_active=True)
     serializer_class = ChatWindowSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOnly]
     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
     pagination_class = DynamicPagination
     http_method_names = ['get', 'post', 'head', 'options']
+    
+    def get_queryset(self):
+        """Restrict chat windows to owner; superusers see all."""
+        
+        user = self.request.user
+        qs = ChatWindow.objects.filter(is_active=True)
+        if not user.is_authenticated:
+            return ChatWindow.objects.none()
+        if user.is_superuser:
+            return qs
+        return qs.filter(Q(session__user=user) | Q(session__created_by=user))
     
     def create(self, request, *args, **kwargs):
         try:
@@ -184,21 +197,22 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
                     sentiment = analysis_data.get('sentiment_summary', {})
                     reviews_count = result.get('reviews_analyzed', 0)
                     
-                    response_summary = f"""App Analysis Complete
-                    
-                    App: {identifier}
-                    Reviews Analyzed: {reviews_count}
+                    response_summary = f"""
+                                        
+                                        App Analysis Complete
+                                        App: {identifier}
+                                        Reviews Analyzed: {reviews_count}
 
-                    Sentiment Overview:
-                    - Positive: {sentiment.get('positive_count', 0)} ({sentiment.get('positive_percentage', 0):.1f}%)
-                    - Negative: {sentiment.get('negative_count', 0)} ({sentiment.get('negative_percentage', 0):.1f}%)
-                    - Neutral: {sentiment.get('neutral_count', 0)} ({sentiment.get('neutral_percentage', 0):.1f}%)
+                                        Sentiment Overview:
+                                        - Positive: {sentiment.get('positive_count', 0)} ({sentiment.get('positive_percentage', 0):.1f}%)
+                                        - Negative: {sentiment.get('negative_count', 0)} ({sentiment.get('negative_percentage', 0):.1f}%)
+                                        - Neutral: {sentiment.get('neutral_count', 0)} ({sentiment.get('neutral_percentage', 0):.1f}%)
 
-                    Executive Summary:
-                    {analysis_data.get('executive_summary', 'Analysis completed successfully.')}
+                                        Executive Summary:
+                                        {analysis_data.get('executive_summary', 'Analysis completed successfully.')}
 
-                    See charts and detailed analysis in the structured data.
-                    """
+                                        See charts and detailed analysis in the structured data.
+                                    """
                     
                     chat_window_obj.response = response_summary
                     chat_window_obj.save()

@@ -7,7 +7,6 @@ router = routers.DefaultRouter()
 
 router.register(r'faqs', views.FrequentlyAskedQuestionViewSet, basename='faq')
 router.register(r'contact-messages', views.ContactMessageViewSet, basename='contact-message')
-
 router.register(r'book-calendar', views.BookCalendarViewSet, basename='book-calendar')
 router.register(r'email-subscribe', views.EmailSubscribeViewSet, basename='email-subscribe')
 router.register(r'wait-lists', views.WaitListViewSet, basename='wait-list') 
