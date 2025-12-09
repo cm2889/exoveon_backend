@@ -489,8 +489,10 @@ def google_auth_callback(request):
 
             user = User.objects.create(username=username, email=email)
             user.set_unusable_password()
+            
             if name:
-                user.first_name = name
+                user.first_name = name.split(' ')[0] 
+                user.last_name = name.split(' ')[-1] 
             user.save()
 
         refresh = RefreshToken.for_user(user)
@@ -514,7 +516,8 @@ def google_auth_callback(request):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
-                'first_name': user.first_name,
+                'first_name': user.first_name.split(' ')[0] if user.first_name else '',
+                'last_name': user.last_name.split(' ')[-1] if user.last_name else '',
             }
         }, status=status.HTTP_200_OK)
     except Exception as e:
