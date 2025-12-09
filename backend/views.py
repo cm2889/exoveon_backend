@@ -1,3 +1,4 @@
+import json
 import os
 import pytz
 import asyncio
@@ -40,6 +41,9 @@ from agent.app_agent import analyze_app_and_report
 from agent.url_detector import detect_url_type, normalize_url
 from django.http import FileResponse, HttpResponse
 from django.db.models import Q
+from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
+import requests
 
 
 class SessionViewSet(viewsets.ModelViewSet):
@@ -398,6 +402,123 @@ def sign_in(request):
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+@api_view(['POST'])
+def google_auth(request):
+    try:
+        client_config = request.data
+        if not client_config or 'web' not in client_config:
+            creds_path = os.path.join(settings.BASE_DIR, 'auth_creds.json')
+            if os.path.exists(creds_path):
+                with open(creds_path, 'r') as f:
+                    client_config = json.load(f)
+            else:
+                return Response({'success': False, 'message': 'Google OAuth client config not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
+        flow = Flow.from_client_config(client_config, scopes=scopes)
+        # Use the first redirect URI from provided config
+        flow.redirect_uri = client_config['web']['redirect_uris'][0]
+
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent'
+        )
+
+        # Store client config and state in session for callback
+        request.session['google_oauth_client_config'] = client_config
+        request.session['google_oauth_state'] = state
+
+        return Response({'success': True, 'auth_url': authorization_url, 'state': state}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': f'Error initiating Google OAuth: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def google_auth_callback(request):
+    try:
+        code = request.GET.get('code')
+        state = request.GET.get('state')
+        client_config = request.session.get('google_oauth_client_config')
+        saved_state = request.session.get('google_oauth_state')
+
+        if not code:
+            return Response({'success': False, 'message': 'Authorization code missing'}, status=status.HTTP_400_BAD_REQUEST)
+        if not client_config:
+            try:
+                import json
+                creds_path = os.path.join(settings.BASE_DIR, 'auth_creds.json')
+                with open(creds_path, 'r') as f:
+                    client_config = json.load(f)
+            except Exception:
+                return Response({'success': False, 'message': 'OAuth client config missing from session and fallback file not found'}, status=status.HTTP_400_BAD_REQUEST)
+        if saved_state and state and saved_state != state:
+            return Response({'success': False, 'message': 'Invalid OAuth state'}, status=status.HTTP_400_BAD_REQUEST)
+
+        scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
+        flow = Flow.from_client_config(client_config, scopes=scopes)
+        flow.redirect_uri = client_config['web']['redirect_uris'][0]
+        flow.fetch_token(code=code)
+
+        credentials = flow.credentials
+
+        # Fetch user info from Google
+        userinfo_resp = requests.get(
+            'https://www.googleapis.com/oauth2/v1/userinfo',
+            params={'alt': 'json'},
+            headers={'Authorization': f'Bearer {credentials.token}'}
+        )
+        if userinfo_resp.status_code != 200:
+            return Response({'success': False, 'message': 'Failed to fetch Google user info'}, status=status.HTTP_400_BAD_REQUEST)
+
+        userinfo = userinfo_resp.json()
+        email = userinfo.get('email')
+        name = userinfo.get('name') or userinfo.get('given_name')
+
+        if not email:
+            return Response({'success': False, 'message': 'Google account email not available'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            username = email.split('@')[0]
+            base_username = username
+            i = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{i}"
+                i += 1
+
+            user = User.objects.create(username=username, email=email)
+            user.set_unusable_password()
+            if name:
+                user.first_name = name
+            user.save()
+
+        refresh = RefreshToken.for_user(user)
+
+        # Persist minimal token info in session if needed later
+        request.session['google_credentials'] = {
+            'token': credentials.token,
+            'refresh_token': getattr(credentials, 'refresh_token', None),
+            'token_uri': getattr(credentials, 'token_uri', None),
+            'client_id': getattr(credentials, 'client_id', None),
+            'client_secret': getattr(credentials, 'client_secret', None),
+            'scopes': getattr(credentials, 'scopes', []),
+        }
+
+        return Response({
+            'success': True,
+            'message': 'Google sign-in successful',
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+            }
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': f'Error completing Google OAuth: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])

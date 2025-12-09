@@ -25,7 +25,6 @@ api_documentation_urls = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
-
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("backend.urls")),

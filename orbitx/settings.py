@@ -4,13 +4,12 @@ from pathlib import Path
 from decouple import config 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(_file_)))
 
-SECRET_KEY = "django-insecure-kp!xwwv*dj5m=vwrd_5^@42#^m*j9493-=8*7pyd7h_wb6vwzh"
+SECRET_KEY = "55105437938a2263e5f3ad940d123fbe6e756763@#orbitx"
 
 DEBUG = False 
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['api.orbitx.uk', 'www.api.orbitx.uk', 'localhost', '127.0.0.1']
 
 
 INSTALLED_APPS = [
@@ -204,7 +203,6 @@ CKEDITOR_CONFIGS = {
         'extraAllowedContent': 'img[!src,alt,width,height];',
     }
 }
-
 
 
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
