@@ -1,3 +1,5 @@
+import uuid
+import os 
 from django.db import models
 from django.contrib.auth.models import User 
 from django.conf import settings 
@@ -308,7 +310,34 @@ class ScreenshotImage(models.Model):
 
     class Meta:
         ordering = ['image_order', '-created_at']
+
+
+def video_upload_path(instance, filename):
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('videos/', filename) 
         
 
+class Videos(models.Model):
+    project_name = models.CharField(max_length=255) 
+    slug = models.SlugField(max_length=100, unique=True, blank=True) 
+    video_file = models.FileField(upload_to=video_upload_path)
+    uploaded_at = models.DateTimeField(auto_now_add=True) 
 
-    
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='video_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='video_updated_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False) 
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.project_name)
+        super().save(*args, **kwargs) 
+
+    class Meta:
+        ordering = ['-created_at'] 
+
+    def __str__(self):
+        return self.project_name 

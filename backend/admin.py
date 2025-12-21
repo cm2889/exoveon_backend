@@ -13,8 +13,15 @@ from backend.models import (
     Session,
     ChatWindow,
     ScreenshotImage,
-    WaitList, 
+    WaitList,
+    Videos 
 )
+
+@admin.register(Videos)
+class VideosAdmin(admin.ModelAdmin):
+    list_display = ('project_name', 'slug', 'uploaded_at', 'is_active')
+    list_filter = ('is_active', 'uploaded_at')
+    search_fields = ('project_name', 'slug') 
 
 @admin.register(WaitList)
 class WaitListAdmin(admin.ModelAdmin):

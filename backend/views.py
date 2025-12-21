@@ -25,8 +25,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
 
 from django.contrib.auth.models import User
-from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer, SessionSerializer, ChatWindowSerializer, WaitListSerializer  
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy, Session, ChatWindow, ScreenshotImage, WaitList 
+from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer, SessionSerializer, ChatWindowSerializer, VideosSerializer, WaitListSerializer, Videos 
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy, Session, ChatWindow, ScreenshotImage, WaitList, Videos 
 
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
@@ -39,11 +39,18 @@ from django.core.files.base import ContentFile
 from agent.brower_agent import screenshot_agent
 from agent.app_agent import analyze_app_and_report
 from agent.url_detector import detect_url_type, normalize_url
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, StreamingHttpResponse
 from django.db.models import Q
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 import requests
+import os
+import json
+import traceback
+import asyncio
+import pytz
+import mimetypes
+import re
 
 
 
@@ -208,6 +215,134 @@ def google_auth_callback(request):
         }, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'success': False, 'message': f'Error completing Google OAuth: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class VideosViewSet(viewsets.ModelViewSet):
+    queryset = Videos.objects.filter(is_active=True)
+    serializer_class = VideosSerializer
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+    
+    def get_permissions(self):
+        """
+        Anyone can GET (view videos)
+        Only authenticated users can POST (create)
+        Only superusers can PATCH and DELETE (update/delete)
+        """
+        if self.action in ['list', 'retrieve', 'stream_video']:
+            # Anyone can view and stream videos
+            permission_classes = [permissions.AllowAny]
+        elif self.action == 'create':
+            # Only authenticated users can create
+            permission_classes = [permissions.IsAuthenticated]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            # Only superusers can update or delete
+            permission_classes = [permissions.IsAdminUser]
+        else:
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]
+    
+    def get_queryset(self):
+        """Return videos for authenticated users or all active videos; superusers see all."""
+        user = self.request.user
+        qs = Videos.objects.filter(is_active=True).order_by('-uploaded_at')
+        
+        # If not authenticated, return all active videos (public access)
+        if not user.is_authenticated:
+            return qs
+        
+        # Superusers see everything
+        if user.is_superuser:
+            return qs
+        
+        # Regular authenticated users see only their videos
+        return qs.filter(created_by=user)
+    
+    def perform_create(self, serializer):
+        serializer.save(
+            created_by=self.request.user if self.request.user.is_authenticated else None
+        )
+    
+    def perform_update(self, serializer):
+        serializer.save(
+            updated_by=self.request.user if self.request.user.is_authenticated else None
+        )
+    
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete video - only superusers can access this"""
+        instance = self.get_object()
+        instance.is_active = False
+        instance.deleted = True
+        instance.save()
+        return Response({'success': True, 'message': 'Video deleted successfully'}, status=status.HTTP_200_OK)
+    
+    # @action(detail=True, methods=['get'], url_path='stream', permission_classes=[permissions.AllowAny])
+    # def stream_video(self, request, pk=None):
+    #     """Stream video with range request support for proper browser playback"""
+    #     try:
+    #         video = self.get_object()
+    #         video_path = video.video_file.path
+            
+    #         if not os.path.exists(video_path):
+    #             return Response({'error': 'Video file not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+    #         # Get video file size
+    #         file_size = os.path.getsize(video_path)
+            
+    #         # Get content type - handle .mov files properly
+    #         content_type, _ = mimetypes.guess_type(video_path)
+    #         if not content_type:
+    #             # Default content types for common video formats
+    #             ext = os.path.splitext(video_path)[1].lower()
+    #             content_type_map = {
+    #                 '.mp4': 'video/mp4',
+    #                 '.mov': 'video/quicktime',
+    #                 '.avi': 'video/x-msvideo',
+    #                 '.webm': 'video/webm',
+    #                 '.mkv': 'video/x-matroska',
+    #             }
+    #             content_type = content_type_map.get(ext, 'video/mp4')
+            
+    #         # Parse range header
+    #         range_header = request.META.get('HTTP_RANGE', '').strip()
+    #         range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+            
+    #         if range_match:
+    #             # Range request - send partial content
+    #             start = int(range_match.group(1))
+    #             end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+    #             end = min(end, file_size - 1)
+    #             length = end - start + 1
+                
+    #             # Open file and seek to start position
+    #             with open(video_path, 'rb') as video_file:
+    #                 video_file.seek(start)
+    #                 data = video_file.read(length)
+                
+    #             response = HttpResponse(data, status=206, content_type=content_type)
+    #             response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+    #             response['Accept-Ranges'] = 'bytes'
+    #             response['Content-Length'] = str(length)
+    #             response['Content-Disposition'] = 'inline'
+                
+    #         else:
+    #             # Normal request - send full file
+    #             response = FileResponse(open(video_path, 'rb'), content_type=content_type)
+    #             response['Content-Length'] = str(file_size)
+    #             response['Accept-Ranges'] = 'bytes'
+    #             response['Content-Disposition'] = 'inline'
+            
+    #         # Set caching headers for better performance
+    #         response['Cache-Control'] = 'public, max-age=31536000'
+            
+    #         return response
+            
+    #     except Exception as e:
+    #         return Response({
+    #             'error': 'Error streaming video',
+    #             'detail': str(e)
+    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SessionViewSet(viewsets.ModelViewSet):
@@ -869,7 +1004,7 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
             # Service account credentials (no user OAuth / no Google Meet for now)
             SERVICE_ACCOUNT_FILE = os.path.join(settings.BASE_DIR, 'credentials.json')
             SCOPES = ['https://www.googleapis.com/auth/calendar']
-            CALENDAR_ID = "ist2889@gmail.com"
+            CALENDAR_ID = "iht2889@gmail.com"
 
             try:
                 credentials = ServiceAccountCredentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)

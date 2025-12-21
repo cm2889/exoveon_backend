@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError 
 import pytz
-from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage, WaitList 
+from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage, WaitList, Videos 
 
 # EMAIL_RE = re.compile(r"^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$")
 
@@ -17,6 +17,19 @@ from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAsk
 # }
 
 # DISALLOWED = getattr(settings, "BUSINESS_EMAIL_DISALLOWED_DOMAINS", DEFAULT_DISALLOWED_DOMAINS)
+
+class VideosSerializer(serializers.ModelSerializer):
+    # stream_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Videos 
+        exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
+    
+    # def get_stream_url(self, obj):
+    #     request = self.context.get('request')
+    #     if request and obj.id:
+    #         return request.build_absolute_uri(f'/api/videos/{obj.id}/stream/')
+    #     return None
 
 class WaitListSerializer(serializers.ModelSerializer):
     class Meta:

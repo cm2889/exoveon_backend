@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "55105437938a2263e5f3ad940d123fbe6e756763@#orbitx"
 
-DEBUG = False 
+DEBUG = True 
 
 ALLOWED_HOSTS = ['api.orbitx.uk', 'www.api.orbitx.uk', 'localhost', '127.0.0.1']
 
@@ -81,6 +81,8 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
     'https://orbitx.uk', 
     "https://www.orbitx.uk",
     'http://orbitx.uk', 
@@ -90,7 +92,28 @@ CORS_ALLOWED_ORIGINS = [
 
 ]
 
-CORS_ALLOW_CREDENTIALS = True  
+CORS_ALLOW_CREDENTIALS = True
+
+# Additional CORS settings for video streaming
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'range',  # Important for video streaming
+]
+
+CORS_EXPOSE_HEADERS = [
+    'content-range',
+    'accept-ranges',
+    'content-length',
+    'content-type',
+]  
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",

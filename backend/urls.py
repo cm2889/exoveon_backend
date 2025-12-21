@@ -16,6 +16,7 @@ router.register(r'privacy-policy', views.PrivacyPolicyViewSet, basename='privacy
 router.register(r'terms-and-conditions', views.TermsAndConditionsViewSet, basename='terms-and-conditions')
 router.register(r'sessions', views.SessionViewSet, basename='session')
 router.register(r'chat-windows', views.ChatWindowViewSet, basename='chat-window')
+router.register(r'videos', views.VideosViewSet, basename='videos') 
 
 urlpatterns = [
     path('signup/', views.sign_up, name='sign_up'),
