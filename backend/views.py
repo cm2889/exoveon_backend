@@ -888,7 +888,6 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
             if not end_dt:
                 end_dt = start_dt + timedelta(hours=1)
 
-            # Normalize times to requested timezone
             start_dt = (tzinfo.localize(start_dt) if start_dt.tzinfo is None else start_dt.astimezone(tzinfo))
             end_dt = (tzinfo.localize(end_dt) if end_dt.tzinfo is None else end_dt.astimezone(tzinfo))
 
