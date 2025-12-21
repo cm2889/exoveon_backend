@@ -869,7 +869,7 @@ class BookCalendarViewSet(viewsets.ModelViewSet):
             # Service account credentials (no user OAuth / no Google Meet for now)
             SERVICE_ACCOUNT_FILE = os.path.join(settings.BASE_DIR, 'credentials.json')
             SCOPES = ['https://www.googleapis.com/auth/calendar']
-            CALENDAR_ID = "f.asif.official@gmail.com"
+            CALENDAR_ID = "ist2889@gmail.com"
 
             try:
                 credentials = ServiceAccountCredentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
