@@ -1,6 +1,7 @@
 import json
 import os
 import pytz
+import shutil
 import asyncio
 import traceback 
 from uuid import uuid4
@@ -538,7 +539,6 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
                                 )
                     
                     # Clean up temporary JSON/text files (keep only images in database)
-                    import shutil
                     for file_to_remove in ['analysis_report.md', 'analysis_data.json', 'raw_analysis.txt']:
                         file_path = output_dir / file_to_remove
                         if file_path.exists():

@@ -78,6 +78,7 @@ def detect_url_type(url: str) -> Tuple[str, Optional[str]]:
     return ('website', url)
 
 
+
 def normalize_url(url: str) -> str:
     """Normalize URL by ensuring it has a proper scheme.
     
@@ -103,3 +104,8 @@ def normalize_url(url: str) -> str:
         url = f'https://{url}'
     
     return url
+
+
+# if __name__ == "__main__":
+#     url = "https://play.google.com/store/apps/details?id=com.thecitybank.citytouch&pcampaignid=web_share"
+#     print(detect_url_type(url)) 

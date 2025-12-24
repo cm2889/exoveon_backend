@@ -3,7 +3,7 @@ import random
 import time
 from typing import List, Optional
 from datetime import datetime, timedelta, UTC
-from google_play_scraper import reviews, Sort, search
+from google_play_scraper import reviews, Sort, search, app
 
 LANGUAGE = 'en'
 COUNTRY = 'bd'
@@ -30,11 +30,40 @@ class ReviewEntry:
 
 
 def find_app_id_by_name(query: str) -> Optional[str]:
+    """
+    If query looks like a package ID (contains dots), use it directly.
+    Otherwise, search for the app.
+    """
+    # If it looks like a package ID (e.g., com.thecitybank.citytouch), use it directly
+    if '.' in query and query.count('.') >= 2:
+        print(f"Using package ID directly: {query}")
+        try:
+            # Verify the app exists
+            app_metadata = app(query, lang=LANGUAGE, country='us')
+            print(f"App verified: {app_metadata['title']} by {app_metadata['developer']}")
+            return query
+        except Exception as exc:
+            print(f"Error verifying app: {exc}")
+            return None
+    
+    # Otherwise search for it
     try:
         results = search(query=query, lang=LANGUAGE, country=COUNTRY, n_hits=5)
-    except Exception as exc:
+        if not results:
+            print(f"No results found for query: {query}")
+            return None
+        print(f"Search found {len(results)} result(s)")
+        for result in results:
+            if result.get('appId'):
+                print(f"Found app: {result['title']} - {result['appId']}")
+                return result['appId']
+        print("No valid appId found in search results")
         return None
-    return results[0]['appId'] if results else None
+    except Exception as exc:
+        print(f"Error searching for app: {exc}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 def fetch_all_reviews(app_id: str, max_total: int = 100, progress_step: int = 500) -> List[ReviewEntry]:
@@ -93,11 +122,16 @@ def fetch_all_reviews(app_id: str, max_total: int = 100, progress_step: int = 50
 
 
 # if __name__ == "__main__":
-#     app_name = "com.thecitybank.citytouch" 
+#     app_name = "com.ebl.skybanking" 
 #     max_total = 100 
 
 #     app_id = find_app_id_by_name(app_name) 
-#     print(f"Found app ID: {app_id}") 
+#     print(f"Found app ID: {app_id}")
+    
+#     if not app_id:
+#         print(f"Could not find app ID for '{app_name}'. Please check the app name or try searching on Google Play Store.")
+#         exit(1)
+    
 #     reviews_list = fetch_all_reviews(app_id, max_total=max_total) 
 
 #     for r in reviews_list:
