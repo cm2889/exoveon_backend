@@ -138,10 +138,16 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.orbitx.uk",
     'http://orbitx.uk', 
     "http://www.orbitx.uk",
-    "https://www.orbitx.uk",
+    "https://api.orbitx.uk",  # Added backend itself
     "https://orbitx.design", 
     "https://exoveon.com", 
 ]
+
+CSRF_COOKIE_DOMAIN = '.orbitx.uk'
+SESSION_COOKIE_DOMAIN = '.orbitx.uk'
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 
 ROOT_URLCONF = "orbitx.urls"
 

@@ -256,6 +256,53 @@ class WaitList(models.Model):
         ordering = ['-created_at'] 
 
 
+
+class TokenWallet(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE) 
+    total_tokens = models.IntegerField(default=0) 
+    used_tokens = models.IntegerField(default=0) 
+
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tokenwallet_created_by') 
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tokenwallet_updated_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"TokenCounter - {self.user.username}"
+
+    class Meta:
+        ordering = ['-created_at'] 
+
+
+class BuyTokenLog(models.Model):
+    
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('COMPLETED', 'Completed'),
+        ('FAILED', 'Failed'),
+    ] 
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE) 
+    amount_of_tokens = models.IntegerField(default=0) 
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2) 
+    payment_reference = models.CharField(max_length=255, null=True, blank=True)
+    transaction_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    transaction_id = models.CharField(max_length=255, null=True, blank=True) 
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"BuyTokenLog - {self.user.username} - {self.tokens_bought} tokens"
+
+    class Meta:
+        ordering = ['-created_at']
+
+
 class Session(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True) 
     name = models.CharField(max_length=255, null=True, blank=True) 
@@ -273,14 +320,13 @@ class Session(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+
 class ChatWindow(models.Model):
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='chatwindow_session')  
     prompt = models.TextField(null=True, blank=True) 
     url = models.URLField(null=True, blank=True) 
 
     response = models.TextField(null=True, blank=True)  
-    
-    # Store structured app analysis data (sentiment, ratings, issues, recommendations, etc.)
     analysis_data = models.JSONField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
