@@ -16,6 +16,7 @@ router.register(r'privacy-policy', views.PrivacyPolicyViewSet, basename='privacy
 router.register(r'terms-and-conditions', views.TermsAndConditionsViewSet, basename='terms-and-conditions')
 router.register(r'sessions', views.SessionViewSet, basename='session')
 router.register(r'chat-windows', views.ChatWindowViewSet, basename='chat-window')
+router.register(r'deep-chats', views.DeepChatViewSet, basename='deep-chat')
 router.register(r'videos', views.VideosViewSet, basename='videos') 
 
 urlpatterns = [

@@ -17,8 +17,6 @@ class SignLog(models.Model):
     def __str__(self):
         return f"SignLog - {self.user.username if self.user else 'Unknown'} - {self.created_at}" 
 
-
-
 class ContactMessage(models.Model):
 
     INVESTMENT_STAGES_CHOICE = (
@@ -78,6 +76,7 @@ class FrequentlyAskedQuestion(models.Model):
     class Meta:
         ordering = ['-created_at']
     
+
 class BookCalendar(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     event_number = models.IntegerField(null=True, blank=True)
@@ -108,7 +107,6 @@ class BookCalendar(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.event_number:
-            # Safely fetch the highest existing event_number (ignore NULLs)
             last_event = BookCalendar.objects.filter(event_number__isnull=False).order_by('-event_number').first()
             self.event_number = (last_event.event_number + 1) if last_event and last_event.event_number is not None else 1
 
@@ -200,7 +198,6 @@ class BlogPost(models.Model):
         ordering = ['-published_at']
 
 
-
 class PrivacyPolicy(models.Model):
     version = models.CharField(max_length=50, null=True, blank=True)
     content = RichTextUploadingField()
@@ -254,7 +251,6 @@ class WaitList(models.Model):
     
     class Meta:
         ordering = ['-created_at'] 
-
 
 
 class TokenWallet(models.Model):
@@ -341,8 +337,28 @@ class ChatWindow(models.Model):
         ordering = ['-created_at']
 
 
+class DeepChat(models.Model):
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='deepchat_session')  
+    prompt = models.TextField(null=True, blank=True) 
+    url = models.URLField(null=True, blank=True) 
+
+    analysis_data = models.JSONField(null=True, blank=True) 
+    
+    created_at = models.DateTimeField(auto_now_add=True) 
+    updated_at = models.DateTimeField(auto_now=True) 
+    is_active = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False) 
+
+    def __str__(self):
+        return self.prompt if self.prompt else f"DeepChat {self.id}" 
+
+    class Meta:
+        ordering = ['-created_at'] 
+
+
 class ScreenshotImage(models.Model):
-    chat_window = models.ForeignKey(ChatWindow, on_delete=models.CASCADE, related_name='screenshots')
+    chat_window = models.ForeignKey(ChatWindow, on_delete=models.CASCADE, related_name='screenshots', null=True, blank=True)
+    deep_chat = models.ForeignKey(DeepChat, on_delete=models.CASCADE, related_name='screenshots', null=True, blank=True)
     image = models.ImageField(upload_to='agent/')
     image_order = models.IntegerField(default=0)
 
@@ -352,7 +368,12 @@ class ScreenshotImage(models.Model):
     deleted = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Screenshot {self.image_order} for {self.chat_window}"
+        if self.chat_window:
+            return f"ScreenshotImage - ChatWindow {self.chat_window.id} - Order {self.image_order}"
+        elif self.deep_chat:
+            return f"ScreenshotImage - DeepChat {self.deep_chat.id} - Order {self.image_order}"
+        else:
+            return f"ScreenshotImage - Order {self.image_order}"
 
     class Meta:
         ordering = ['image_order', '-created_at']

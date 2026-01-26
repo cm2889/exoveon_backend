@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError 
 import pytz
-from backend.models import PrivacyPolicy, SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, ScreenshotImage, WaitList, Videos 
+from backend.models import PrivacyPolicy, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, Session, ChatWindow, DeepChat, ScreenshotImage, WaitList, Videos 
 
 # EMAIL_RE = re.compile(r"^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$")
 
@@ -25,11 +25,6 @@ class VideosSerializer(serializers.ModelSerializer):
         model = Videos 
         exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
     
-    # def get_stream_url(self, obj):
-    #     request = self.context.get('request')
-    #     if request and obj.id:
-    #         return request.build_absolute_uri(f'/api/videos/{obj.id}/stream/')
-    #     return None
 
 class WaitListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -64,15 +59,24 @@ class ScreenshotImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'image_order', 'created_at']
         read_only_fields = ['id', 'created_at']
 
-
 class ChatWindowSerializer(serializers.ModelSerializer):
-    screenshots = ScreenshotImageSerializer(many=True, read_only=True)
-    
+    screenshots = ScreenshotImageSerializer(many=True, read_only=True) 
+
     class Meta:
         model = ChatWindow
         fields = ['id', 'session', 'prompt', 'url', 'response', 'analysis_data', 'screenshots', 'created_at', 'updated_at']
         read_only_fields = ['id', 'response', 'analysis_data', 'screenshots', 'created_at', 'updated_at']  
     
+
+class DeepChatSerializer(serializers.ModelSerializer):
+    session_name = serializers.CharField(source='session.name', read_only=True)
+    screenshots = ScreenshotImageSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = DeepChat
+        fields = ['id', 'session', 'session_name', 'prompt', 'url', 'analysis_data', 'screenshots', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'session_name', 'analysis_data', 'screenshots', 'created_at', 'updated_at']
+
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -162,30 +166,25 @@ class BookCalendarSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
     
 
-
 class EmailSubscribeSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailSubscribe
         exclude = ['user', 'subscribed_at', 'is_active', 'deleted']
-
 
 class BlogCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = BlogCategory
         exclude = ['created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
-
 class BlogPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = BlogPost
         exclude = ['status', 'published_at', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
 
-
 class PrivacyPolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = PrivacyPolicy
         exclude = ['version', 'created_by', 'updated_by', 'created_at', 'updated_at', 'is_active', 'deleted']
-
 
 class TermsAndConditionsSerializer(serializers.ModelSerializer):
     class Meta:

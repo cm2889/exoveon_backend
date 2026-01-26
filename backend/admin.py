@@ -12,6 +12,7 @@ from backend.models import (
     TermsAndConditions,
     Session,
     ChatWindow,
+    DeepChat, 
     ScreenshotImage,
     WaitList,
     Videos 
@@ -96,11 +97,19 @@ class SessionAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'created_at')
     search_fields = ('user__username', 'name')
 
+
 @admin.register(ChatWindow)
 class ChatWindowAdmin(admin.ModelAdmin):
     list_display = ('session', 'prompt', 'url', 'created_at', 'is_active')
     list_filter = ('is_active', 'created_at')
     search_fields = ('session__user__username', 'prompt', 'url')
+
+@admin.register(DeepChat)
+class DeepChatAdmin(admin.ModelAdmin):
+    list_display = ('session', 'prompt', 'url', 'created_at', 'is_active', )
+    list_filter = ('is_active', 'created_at', )
+    search_fields = ('session__user__username', 'prompt', 'url', )
+
 
 @admin.register(ScreenshotImage)
 class ScreenshotImageAdmin(admin.ModelAdmin):

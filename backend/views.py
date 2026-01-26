@@ -1,10 +1,12 @@
-import json
 import os
+import json
 import pytz
-import shutil
 import asyncio
-import traceback 
-from uuid import uuid4
+import json
+import traceback
+import asyncio
+import pytz
+import requests
 from django.utils import timezone 
 from datetime import timedelta
 from pathlib import Path
@@ -26,8 +28,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
 
 from django.contrib.auth.models import User
-from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer, SessionSerializer, ChatWindowSerializer, VideosSerializer, WaitListSerializer, Videos 
-from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy, Session, ChatWindow, ScreenshotImage, WaitList, Videos 
+from backend.serializers import SignUpSerializer, SignInSerializer, ContactMessageSerializer, FrequentlyAskedQuestionSerializer, BookCalendarSerializer, EmailSubscribeSerializer, BlogCategorySerializer, BlogPostSerializer, TermsAndConditionsSerializer, PrivacyPolicySerializer, SessionSerializer, ChatWindowSerializer, VideosSerializer, WaitListSerializer, Videos, DeepChatSerializer
+from backend.models import SignLog, ContactMessage, FrequentlyAskedQuestion, BookCalendar, EmailSubscribe, BlogCategory, BlogPost, TermsAndConditions, PrivacyPolicy, Session, ChatWindow, ScreenshotImage, WaitList, Videos, DeepChat 
 
 from core.paginations import DynamicPagination 
 from core.exclude_csrf import CsrfExemptSessionAuthentication 
@@ -44,16 +46,6 @@ from django.http import FileResponse, HttpResponse, StreamingHttpResponse
 from django.db.models import Q
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
-import requests
-import os
-import json
-import traceback
-import asyncio
-import pytz
-import mimetypes
-import re
-
-
 
 
 GOOGLE_SCOPES = [
@@ -278,73 +270,6 @@ class VideosViewSet(viewsets.ModelViewSet):
         instance.save()
         return Response({'success': True, 'message': 'Video deleted successfully'}, status=status.HTTP_200_OK)
     
-    # @action(detail=True, methods=['get'], url_path='stream', permission_classes=[permissions.AllowAny])
-    # def stream_video(self, request, pk=None):
-    #     """Stream video with range request support for proper browser playback"""
-    #     try:
-    #         video = self.get_object()
-    #         video_path = video.video_file.path
-            
-    #         if not os.path.exists(video_path):
-    #             return Response({'error': 'Video file not found'}, status=status.HTTP_404_NOT_FOUND)
-            
-    #         # Get video file size
-    #         file_size = os.path.getsize(video_path)
-            
-    #         # Get content type - handle .mov files properly
-    #         content_type, _ = mimetypes.guess_type(video_path)
-    #         if not content_type:
-    #             # Default content types for common video formats
-    #             ext = os.path.splitext(video_path)[1].lower()
-    #             content_type_map = {
-    #                 '.mp4': 'video/mp4',
-    #                 '.mov': 'video/quicktime',
-    #                 '.avi': 'video/x-msvideo',
-    #                 '.webm': 'video/webm',
-    #                 '.mkv': 'video/x-matroska',
-    #             }
-    #             content_type = content_type_map.get(ext, 'video/mp4')
-            
-    #         # Parse range header
-    #         range_header = request.META.get('HTTP_RANGE', '').strip()
-    #         range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
-            
-    #         if range_match:
-    #             # Range request - send partial content
-    #             start = int(range_match.group(1))
-    #             end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
-    #             end = min(end, file_size - 1)
-    #             length = end - start + 1
-                
-    #             # Open file and seek to start position
-    #             with open(video_path, 'rb') as video_file:
-    #                 video_file.seek(start)
-    #                 data = video_file.read(length)
-                
-    #             response = HttpResponse(data, status=206, content_type=content_type)
-    #             response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-    #             response['Accept-Ranges'] = 'bytes'
-    #             response['Content-Length'] = str(length)
-    #             response['Content-Disposition'] = 'inline'
-                
-    #         else:
-    #             # Normal request - send full file
-    #             response = FileResponse(open(video_path, 'rb'), content_type=content_type)
-    #             response['Content-Length'] = str(file_size)
-    #             response['Accept-Ranges'] = 'bytes'
-    #             response['Content-Disposition'] = 'inline'
-            
-    #         # Set caching headers for better performance
-    #         response['Cache-Control'] = 'public, max-age=31536000'
-            
-    #         return response
-            
-    #     except Exception as e:
-    #         return Response({
-    #             'error': 'Error streaming video',
-    #             'detail': str(e)
-    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class SessionViewSet(viewsets.ModelViewSet):
     serializer_class = SessionSerializer
@@ -354,7 +279,6 @@ class SessionViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
     
     def get_queryset(self):
-        """Return sessions for authenticated users or all active sessions; superusers see all."""
         user = self.request.user
         qs = Session.objects.filter(is_active=True).order_by('-updated_at')
         if not user.is_authenticated:
@@ -391,9 +315,7 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
     pagination_class = DynamicPagination
     http_method_names = ['get', 'post', 'head', 'options']
     
-    def get_queryset(self):
-        """Restrict chat windows to owner; superusers see all."""
-        
+    def get_queryset(self):        
         user = self.request.user
         qs = ChatWindow.objects.filter(is_active=True)
         if not user.is_authenticated:
@@ -635,7 +557,257 @@ class ChatWindowViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED) 
+
+
+from agent.ai_mgt import image_analysis_manager, recommendation_agent_manager, writer_agent_manager, run_full_analysis_pipeline
+
+class DeepChatViewSet(viewsets.ModelViewSet):
+    queryset = DeepChat.objects.filter(is_active=True)
+    serializer_class = DeepChatSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOnly]
+    authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
+    pagination_class = DynamicPagination
+    http_method_names = ['get', 'post', 'head', 'options']
+    
+    def get_queryset(self):        
+        user = self.request.user
+        qs = DeepChat.objects.filter(is_active=True).order_by('-created_at')
+        if not user.is_authenticated:
+            return DeepChat.objects.none()
+        if user.is_superuser:
+            return qs
+        return qs.filter(Q(session__user=user) | Q(session__created_by=user))
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new DeepChat analysis for a given URL.
         
+        Request body:
+        - prompt (required): User's analysis request/persona description
+        - url (required): URL of the website to analyze
+        - session (optional): Session ID to associate with this chat
+        - max_screenshots (optional): Maximum screenshots to capture (default: 3, max: 6)
+        - additional_context (optional): Additional business context for analysis
+        
+        Response:
+        - success: Boolean indicating success
+        - data: DeepChat object with analysis_data containing structured JSON report
+        - session_id: Associated session ID
+        - cto_analysis: Raw CTO technical analysis
+        - pm_analysis: Raw Project Manager analysis
+        """
+        try:
+            # Extract and validate request data
+            session_id = request.data.get('session', None)
+            prompt = request.data.get('prompt', '')
+            url = request.data.get('url', '')
+            max_screenshots = request.data.get('max_screenshots', 3)
+            additional_context = request.data.get('additional_context', None)
+
+            # Validate required fields
+            if not prompt:
+                return Response(
+                    {'success': False, 'error': 'Prompt is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                ) 
+            
+            if not url:
+                return Response(
+                    {'success': False, 'error': 'URL is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validate max_screenshots
+            try:
+                max_screenshots = int(max_screenshots)
+                max_screenshots = min(max(max_screenshots, 1), 6)  # Clamp between 1 and 6
+            except (ValueError, TypeError):
+                max_screenshots = 3
+
+            # Normalize URL
+            url = normalize_url(url)
+            
+            # Handle session: use provided, find existing, or create new
+            session = None
+            if session_id:
+                try:
+                    session = Session.objects.get(id=session_id, is_active=True)
+                    # Verify ownership
+                    if request.user.is_authenticated and not request.user.is_superuser:
+                        if session.user != request.user and session.created_by != request.user:
+                            return Response(
+                                {'success': False, 'error': 'Session not found or access denied'}, 
+                                status=status.HTTP_404_NOT_FOUND
+                            )
+                except Session.DoesNotExist:
+                    return Response(
+                        {'success': False, 'error': 'Session not found or inactive'}, 
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            else:
+                # Auto-create or reuse last active session
+                if request.user.is_authenticated:
+                    session = Session.objects.filter(
+                        user=request.user, 
+                        is_active=True
+                    ).order_by('-created_at').first()
+                
+                if not session:
+                    session = Session.objects.create(
+                        user=request.user if request.user.is_authenticated else None,
+                        name=f"Deep Analysis - {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                        created_by=request.user if request.user.is_authenticated else None
+                    )
+
+            # Create DeepChat instance
+            deep_chat_obj = DeepChat.objects.create(
+                session=session,
+                prompt=prompt,
+                url=url
+            )
+
+            try:
+                # Step 1: Capture screenshots using browser agent
+                image_paths, _ = asyncio.run(
+                    screenshot_agent(prompt=prompt, url=url, n=max_screenshots)
+                )
+                
+                if not image_paths:
+                    deep_chat_obj.analysis_data = {
+                        'error': 'Failed to capture screenshots',
+                        'success': False
+                    }
+                    deep_chat_obj.save()
+                    return Response(
+                        {'success': False, 'error': 'Failed to capture screenshots from URL'}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                
+                # Convert image paths to Path objects
+                image_path_objects = [Path(img_path) for img_path in image_paths]
+                
+                # Step 2: Run CTO-level image analysis
+                cto_analysis = image_analysis_manager(
+                    image_paths=image_path_objects,
+                    page_url=url,
+                    persona_note=prompt,
+                    image_model="gemini-2.5-flash-image",
+                    max_images_for_model=max_screenshots,
+                    max_tokens=16000,
+                    temperature=0.2
+                )
+                
+                # Step 3: Run Project Manager analysis
+                pm_analysis = recommendation_agent_manager(
+                    analysis=cto_analysis,
+                    additional_context=additional_context,
+                    model_name="gpt-4o-mini",
+                    max_tokens=12000,
+                    temperature=0.1
+                )
+                
+                # Step 4: Generate structured JSON report
+                final_report = writer_agent_manager(
+                    cto_analysis=cto_analysis,
+                    pm_analysis=pm_analysis,
+                    model_name="gpt-4o-mini",
+                    max_tokens=16000,
+                    temperature=0.0
+                )
+                
+                # Add metadata to the report
+                if isinstance(final_report, dict):
+                    final_report['_metadata'] = {
+                        'url_analyzed': url,
+                        'persona_prompt': prompt,
+                        'screenshots_captured': len(image_paths),
+                        'analysis_timestamp': timezone.now().isoformat(),
+                        'deep_chat_id': deep_chat_obj.id,
+                        'session_id': session.id
+                    }
+                    final_report['_raw_analyses'] = {
+                        'cto_analysis': cto_analysis,
+                        'pm_analysis': pm_analysis
+                    }
+                
+                # Save analysis data to DeepChat
+                deep_chat_obj.analysis_data = final_report
+                deep_chat_obj.save()
+                
+                # Save screenshot images to ScreenshotImage model
+                saved_screenshots = []
+                for idx, img_path in enumerate(image_paths):
+                    try:
+                        img_path_obj = Path(img_path)
+                        if img_path_obj.exists():
+                            with open(img_path, 'rb') as img_file:
+                                image_content = ContentFile(img_file.read())
+                                screenshot_img = ScreenshotImage.objects.create(
+                                    deep_chat=deep_chat_obj,
+                                    image_order=idx + 1
+                                )
+                                screenshot_img.image.save(
+                                    f'deep_chat_{deep_chat_obj.id}_screenshot_{idx + 1}.png',
+                                    image_content,
+                                    save=True
+                                )
+                                saved_screenshots.append(screenshot_img.id)
+                    except Exception as img_error:
+                        # Log but don't fail the entire request if image save fails
+                        print(f"Error saving screenshot {idx + 1}: {str(img_error)}")
+                
+                # Refresh the deep_chat_obj from database to include screenshots
+                deep_chat_obj.refresh_from_db()
+                
+                # Serialize and return response
+                serializer = self.get_serializer(deep_chat_obj)
+                
+                # Get saved screenshots count
+                saved_screenshots_count = ScreenshotImage.objects.filter(deep_chat=deep_chat_obj).count()
+                
+                return Response(
+                    {
+                        'success': True,
+                        'message': 'Deep analysis completed successfully',
+                        'data': serializer.data,
+                        'session_id': session.id,
+                        'session_name': session.name,
+                        'is_new_session': session_id is None,
+                        'screenshots_captured': len(image_paths),
+                        'screenshots_saved': saved_screenshots_count,
+                        'analysis_type': 'deep_chat',
+                        'url_analyzed': url
+                    }, 
+                    status=status.HTTP_201_CREATED
+                )
+                
+            except Exception as agent_error:
+                error_detail = traceback.format_exc()
+                deep_chat_obj.analysis_data = {
+                    'error': str(agent_error),
+                    'error_detail': error_detail,
+                    'success': False
+                }
+                deep_chat_obj.save()
+                return Response(
+                    {'success': False, 'error': f'Analysis agent failed: {str(agent_error)}'}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        except Exception as e:
+            return Response(
+                {'success': False, 'error': f'Unexpected error: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def destroy(self, request, *args, **kwargs):
+        return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 @api_view(['POST'])
@@ -702,129 +874,6 @@ def sign_in(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
-# @api_view(['POST'])
-# def google_auth(request):
-#     try:
-#         client_config = request.data
-#         if not client_config or 'web' not in client_config:
-#             creds_path = os.path.join(settings.BASE_DIR, 'auth_creds.json')
-#             if os.path.exists(creds_path):
-#                 with open(creds_path, 'r') as f:
-#                     client_config = json.load(f)
-#             else:
-#                 return Response({'success': False, 'message': 'Google OAuth client config not provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
-#         flow = Flow.from_client_config(client_config, scopes=scopes)
-#         # Use the first redirect URI from provided config
-#         flow.redirect_uri = client_config['web']['redirect_uris'][0]
-
-#         authorization_url, state = flow.authorization_url(
-#             access_type='offline',
-#             include_granted_scopes='true',
-#             prompt='consent'
-#         )
-
-#         # Store client config and state in session for callback
-#         request.session['google_oauth_client_config'] = client_config
-#         request.session['google_oauth_state'] = state
-
-#         return Response({'success': True, 'auth_url': authorization_url, 'state': state}, status=status.HTTP_200_OK)
-#     except Exception as e:
-#         return Response({'success': False, 'message': f'Error initiating Google OAuth: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# @api_view(['GET'])
-# def google_auth_callback(request):
-#     try:
-#         code = request.GET.get('code')
-#         state = request.GET.get('state')
-#         client_config = request.session.get('google_oauth_client_config')
-#         saved_state = request.session.get('google_oauth_state')
-
-#         if not code:
-#             return Response({'success': False, 'message': 'Authorization code missing'}, status=status.HTTP_400_BAD_REQUEST)
-#         if not client_config:
-#             try:
-#                 import json
-#                 creds_path = os.path.join(settings.BASE_DIR, 'auth_creds.json')
-#                 with open(creds_path, 'r') as f:
-#                     client_config = json.load(f)
-#             except Exception:
-#                 return Response({'success': False, 'message': 'OAuth client config missing from session and fallback file not found'}, status=status.HTTP_400_BAD_REQUEST)
-#         if saved_state and state and saved_state != state:
-#             return Response({'success': False, 'message': 'Invalid OAuth state'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         scopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
-#         flow = Flow.from_client_config(client_config, scopes=scopes)
-#         flow.redirect_uri = client_config['web']['redirect_uris'][0]
-#         flow.fetch_token(code=code)
-
-#         credentials = flow.credentials
-
-#         # Fetch user info from Google
-#         userinfo_resp = requests.get(
-#             'https://www.googleapis.com/oauth2/v1/userinfo',
-#             params={'alt': 'json'},
-#             headers={'Authorization': f'Bearer {credentials.token}'}
-#         )
-#         if userinfo_resp.status_code != 200:
-#             return Response({'success': False, 'message': 'Failed to fetch Google user info'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         userinfo = userinfo_resp.json()
-#         email = userinfo.get('email')
-#         name = userinfo.get('name') or userinfo.get('given_name')
-
-#         if not email:
-#             return Response({'success': False, 'message': 'Google account email not available'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         user = User.objects.filter(email=email).first()
-#         if not user:
-#             username = email.split('@')[0]
-#             base_username = username
-#             i = 1
-#             while User.objects.filter(username=username).exists():
-#                 username = f"{base_username}{i}"
-#                 i += 1
-
-#             user = User.objects.create(username=username, email=email)
-#             user.set_unusable_password()
-            
-#             if name:
-#                 user.first_name = name.split(' ')[0] 
-#                 user.last_name = name.split(' ')[-1] 
-#             user.save()
-
-#         refresh = RefreshToken.for_user(user)
-
-#         # Persist minimal token info in session if needed later
-#         request.session['google_credentials'] = {
-#             'token': credentials.token,
-#             'refresh_token': getattr(credentials, 'refresh_token', None),
-#             'token_uri': getattr(credentials, 'token_uri', None),
-#             'client_id': getattr(credentials, 'client_id', None),
-#             'client_secret': getattr(credentials, 'client_secret', None),
-#             'scopes': getattr(credentials, 'scopes', []),
-#         }
-
-#         return Response({
-#             'success': True,
-#             'message': 'Google sign-in successful',
-#             'access': str(refresh.access_token),
-#             'refresh': str(refresh),
-#             'user': {
-#                 'id': user.id,
-#                 'username': user.username,
-#                 'email': user.email,
-#                 'first_name': user.first_name.split(' ')[0] if user.first_name else '',
-#                 'last_name': user.last_name.split(' ')[-1] if user.last_name else '',
-#             }
-#         }, status=status.HTTP_200_OK)
-#     except Exception as e:
-#         return Response({'success': False, 'message': f'Error completing Google OAuth: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def sign_out(request):
@@ -861,6 +910,7 @@ class FrequentlyAskedQuestionViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.filter(is_active=True) 
@@ -934,8 +984,6 @@ class WaitListViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
-
-
 
 class BlogCategoryViewSet(viewsets.ModelViewSet):
     queryset = BlogCategory.objects.filter(is_active=True)
@@ -1165,494 +1213,4 @@ class PrivacyPolicyViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-
-
-# class BookCalendarViewSet(viewsets.ModelViewSet):
-#     queryset = BookCalendar.objects.all()
-#     serializer_class = BookCalendarSerializer
-#     permission_classes = [permissions.AllowAny]
-#     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
-#     pagination_class = DynamicPagination 
-    
-#     def get_queryset(self):
-#         """Return bookings only for the authenticated user"""
-#         if self.request.user.is_authenticated:
-#             return BookCalendar.objects.filter(user=self.request.user).order_by('-created_at')
-#         return BookCalendar.objects.none()
-    
-#     def create(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-        
-#         if not serializer.is_valid():
-#             return Response({ 'success': False,  'errors': serializer.errors  }, status=status.HTTP_400_BAD_REQUEST)
-        
-#         try:
-#             data = serializer.validated_data
-            
-#             credentials_data = request.session.get('google_credentials')
-#             # print(f"Debug message: {credentials_data}")
-            
-#             # Ensure we have usable Google OAuth credentials; if not, return auth URL
-#             def oauth_response():
-#                 # Load credentials from credentials.json file
-#                 google_creds = load_google_credentials()
-#                 flow = Flow.from_client_config(
-#                     google_creds,
-#                     scopes=['https://www.googleapis.com/auth/calendar']
-#                 )
-#                 flow.redirect_uri = google_creds['web']['redirect_uris'][0]
-#                 authorization_url, state = flow.authorization_url(
-#                     access_type='offline',
-#                     include_granted_scopes='true',
-#                     prompt='consent',
-#                 )
-#                 return Response({
-#                     'success': False,
-#                     'message': 'Google authentication required',
-#                     'auth_url': authorization_url,
-#                     'state': state
-#                 }, status=status.HTTP_401_UNAUTHORIZED)
-
-#             if not credentials_data:
-#                 return oauth_response()
-            
-#             # If essential fields missing (esp. refresh flow), re-prompt OAuth
-#             required_keys = ['token', 'token_uri', 'client_id', 'client_secret']
-#             if not all(k in credentials_data and credentials_data[k] for k in required_keys) or not credentials_data.get('refresh_token'):
-#                 return oauth_response()
-
-#             credentials = Credentials(**credentials_data)
-            
-#             # Build Google Calendar service
-#             service = build('calendar', 'v3', credentials=credentials)
-            
-#             # Prepare event data (non-destructive access to serializer data)
-#             tz = data.get('timezone', 'UTC')
-#             tzinfo = pytz.timezone(tz)
-
-#             start_dt = data.get('start_datetime')
-#             end_dt = data.get('end_datetime')
-#             if not start_dt or not end_dt:
-#                 # Default to 1-hour meeting if end time not provided
-#                 if not start_dt:
-#                     return Response({'success': False, 'message': 'start_datetime is required.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 end_dt = start_dt + timedelta(hours=1)
-
-#             # Normalize to requested timezone
-#             start_dt = (tzinfo.localize(start_dt) if start_dt.tzinfo is None else start_dt.astimezone(tzinfo))
-#             end_dt = (tzinfo.localize(end_dt) if end_dt.tzinfo is None else end_dt.astimezone(tzinfo))
-
-#             if start_dt >= end_dt:
-#                 # Enforce 1-hour duration if invalid or zero duration provided
-#                 end_dt = start_dt + timedelta(hours=1)
-
-#             summary = data.get('summary')
-#             description = data.get('description', '')
-#             if not summary:
-#                 return Response({'success': False, 'message': 'summary is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             event = {
-#                 'summary': summary,
-#                 'description': description,
-#                 'start': {
-#                     'dateTime': start_dt.isoformat(),
-#                     'timeZone': tz,
-#                 },
-#                 'end': {
-#                     'dateTime': end_dt.isoformat(),
-#                     'timeZone': tz,
-#                 },
-#                 'conferenceData': {
-#                     'createRequest': {
-#                         'requestId': f"meet-{request.user.id}-{timezone.now().timestamp()}",
-#                         'conferenceSolutionKey': {'type': 'hangoutsMeet'}
-#                     }
-#                 }
-#             }
-            
-#             # Add location if provided
-#             location = data.get('location')
-#             if location:
-#                 event['location'] = location
-            
-#             # Add attendees if provided (will also be stored later if model supports it)
-#             attendees_raw = data.get('attendees')
-#             attendees = []
-#             if isinstance(attendees_raw, list):
-#                 attendees = [e.strip() for e in attendees_raw if isinstance(e, str) and e.strip()]
-#             elif isinstance(attendees_raw, str):
-#                 attendees = [e.strip() for e in attendees_raw.split(',') if e.strip()]
-#             if attendees:
-#                 event['attendees'] = [{'email': email} for email in attendees]
-            
-#             # Add reminders (non-destructive)
-#             if data.get('reminders', True):
-#                 event['reminders'] = {
-#                     'useDefault': False,
-#                     'overrides': [
-#                         {'method': 'email', 'minutes': 24 * 60},
-#                         {'method': 'popup', 'minutes': 30},
-#                     ],
-#                 }
-            
-#             # Create the event in Google Calendar
-#             created_event = service.events().insert(
-#                 calendarId='primary',
-#                 body=event,
-#                 conferenceDataVersion=1,
-#                 sendUpdates='all'
-#             ).execute()
-            
-#             # Save to database
-#             calendar_fields = {f.name for f in BookCalendar._meta.get_fields() if getattr(f, 'concrete', False) and not f.many_to_many}
-
-#             # Extract links
-#             book_link = created_event.get('htmlLink')
-#             meet_link = created_event.get('hangoutLink')
-            
-#             if not meet_link and 'conferenceData' in created_event:
-#                 entry_points = created_event['conferenceData'].get('entryPoints', [])
-#                 for ep in entry_points:
-#                     if ep.get('entryPointType') == 'video':
-#                         meet_link = ep.get('uri')
-#                         break
-
-#             booking_kwargs = {
-#                 'user': request.user if request.user.is_authenticated else None,
-#                 'summary': summary,
-#                 'description': description,
-#                 'location': location or '',
-#                 'book_link': book_link,
-#                 'meet_link': meet_link or '',
-#                 'timezone': tz,
-#                 'start_datetime': start_dt.astimezone(pytz.UTC),
-#                 'end_datetime': end_dt.astimezone(pytz.UTC),
-#                 'reminders': data.get('reminders', False),
-#             }
-            
-#             for extra_key in ['full_name', 'email', 'phone_number']:
-#                 if extra_key in data and extra_key in calendar_fields:
-#                     booking_kwargs[extra_key] = data.get(extra_key)
-#             if 'attendees' in calendar_fields and attendees:
-#                 booking_kwargs['attendees'] = ','.join(attendees)
-
-#             booking = BookCalendar.objects.create(**{k: v for k, v in booking_kwargs.items() if k in calendar_fields})
-            
-#             response_serializer = self.get_serializer(booking)
-#             return Response({
-#                 'success': True,
-#                 'data': response_serializer.data,
-#                 'message': 'Calendar event created successfully'
-#             }, status=status.HTTP_201_CREATED)
-            
-#         except HttpError as error:
-#             return Response({
-#                 'success': False,
-#                 'message': f'Google Calendar API error: {str(error)}'
-#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-#         except Exception as e:
-#             return Response({
-#                 'success': False,
-#                 'message': f'Error creating calendar event: {str(e)}'
-#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-#     @action(detail=False, methods=['get'], url_path='sample-payload')
-#     def sample_payload(self, request):
-#         now = timezone.now()
-#         payload = {
-#             "summary": "Team Sync",
-#             "description": "Weekly sync",
-#             "start_datetime": (now + timedelta(hours=1)).isoformat(),
-#             "timezone": "UTC",
-#             "location": "Virtual",
-#             "attendees": [],
-#             "reminders": True,
-#             "full_name": "Jane Doe",
-#             "email": "f.asif.official@gmail.com",
-#             "phone_number": "+8801516373037"
-#         }
-
-#         return Response(payload, status=status.HTTP_200_OK)
-    
-#     def update(self, request, *args, **kwargs):
-#         return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-    
-#     def partial_update(self, request, *args, **kwargs):
-#         return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-    
-#     def destroy(self, request, *args, **kwargs):
-#         return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    
-
-# @api_view(['GET'])
-# def google_oauth_callback(request):
-#     try:
-#         code = request.GET.get('code')
-        
-#         if not code:
-#             return Response({
-#                 'success': False,
-#                 'message': 'Authorization code not found'
-#             }, status=status.HTTP_400_BAD_REQUEST)
-        
-#         google_creds = load_google_credentials()
-        
-#         flow = Flow.from_client_config(
-#             google_creds,
-#             scopes=['https://www.googleapis.com/auth/calendar']
-#         )
-#         flow.redirect_uri = google_creds['web']['redirect_uris'][0]
-#         flow.fetch_token(code=code)
-        
-#         credentials = flow.credentials
-#         request.session['google_credentials'] = {
-#             'token': credentials.token,
-#             'refresh_token': credentials.refresh_token,
-#             'token_uri': credentials.token_uri,
-#             'client_id': credentials.client_id,
-#             'client_secret': credentials.client_secret,
-#             'scopes': credentials.scopes
-#         }
-        
-#         return Response({'success': True, 'message': 'Google OAuth authentication successful'}, status=status.HTTP_200_OK)
-        
-#     except Exception as e:
-#         return Response({'success': False, 'message': f'OAuth callback error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# class BookCalendarViewSet(viewsets.ModelViewSet):
-#     queryset = BookCalendar.objects.filter(is_active=True)
-#     serializer_class = BookCalendarSerializer
-#     permission_classes = [permissions.AllowAny]
-#     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
-#     pagination_class = DynamicPagination
-
-#     def get_authenticate_header(self, request):
-#         return BookCalendar.objects.filter(is_active=True) 
-    
-#     def perform_create(self, serializer):
-#         serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
-#         return super().perform_create(serializer)
-    
-#     def perform_update(self, serializer):
-#         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
-#         return super().perform_update(serializer) 
-    
-#     def destroy(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         instance.is_active = False
-#         instance.save()
-#         return Response({'message': 'Calendar booking deleted successfully'}, status=status.HTTP_200_OK)
-    
-
-# class BookMeetViewSet(viewsets.ModelViewSet):
-#     queryset = BookMeet.objects.filter(is_active=True)
-#     serializer_class = BookMeetSerializer
-#     permission_classes = [permissions.AllowAny]
-#     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
-#     pagination_class = DynamicPagination
-
-#     def get_authenticate_header(self, request):
-#         return BookMeet.objects.filter(is_active=True)
-    
-#     def perform_create(self, serializer):
-#         serializer.save(created_by=self.request.user if self.request.user.is_authenticated else None)
-#         return super().perform_create(serializer)
-
-#     def perform_update(self, serializer):
-#         serializer.save(updated_by=self.request.user if self.request.user.is_authenticated else None)
-#         return super().perform_update(serializer)
-
-#     def destroy(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         instance.is_active = False
-#         instance.save()
-#         return Response({'message': 'Meeting booking deleted successfully'}, status=status.HTTP_200_OK)
-    
-
-
-
-# class BookMeetViewSet(viewsets.ModelViewSet):
-#     queryset = BookMeet.objects.all()
-#     serializer_class = BookMeetSerializer
-#     permission_classes = [permissions.AllowAny]
-#     authentication_classes = [CsrfExemptSessionAuthentication, JWTAuthentication]
-#     pagination_class = DynamicPagination
-    
-#     def get_queryset(self):
-#         """Return bookings only for the authenticated user"""
-#         if self.request.user.is_authenticated:
-#             return BookMeet.objects.filter(user=self.request.user).order_by('-created_at')
-#         return BookMeet.objects.none()
-    
-#     def create(self, request, *args, **kwargs):
-#         """Create a Google Meet in Google Calendar and save to database"""
-#         serializer = self.get_serializer(data=request.data)
-        
-#         if not serializer.is_valid():
-#             return Response({
-#                 'success': False,
-#                 'errors': serializer.errors
-#             }, status=status.HTTP_400_BAD_REQUEST)
-        
-#         try:
-#             # Must be authenticated because BookMeet.user is a required FK
-#             if not request.user.is_authenticated:
-#                 return Response({
-#                     'success': False,
-#                     'message': 'Authentication required to create a Google Meet.'
-#                 }, status=status.HTTP_401_UNAUTHORIZED)
-
-#             data = serializer.validated_data
-            
-#             # Check if user has Google OAuth credentials stored in session
-#             credentials_data = request.session.get('google_credentials')
-            
-#             if not credentials_data:
-#                 # Load credentials from credentials.json file
-#                 google_creds = load_google_credentials()
-                
-#                 # Return OAuth URL for user to authenticate
-#                 flow = Flow.from_client_config(
-#                     google_creds,
-#                     scopes=['https://www.googleapis.com/auth/calendar']
-#                 )
-#                 flow.redirect_uri = google_creds['web']['redirect_uris'][0]
-#                 authorization_url, state = flow.authorization_url(
-#                     access_type='offline',
-#                     # Google expects lowercase 'true'/'false' strings here
-#                     include_granted_scopes='true'
-#                 )
-                
-#                 return Response({
-#                     'success': False,
-#                     'message': 'Google authentication required',
-#                     'auth_url': authorization_url,
-#                     'state': state
-#                 }, status=status.HTTP_401_UNAUTHORIZED)
-            
-#             # Create credentials from stored data
-#             credentials = Credentials(**credentials_data)
-            
-#             # Build Google Calendar service
-#             service = build('calendar', 'v3', credentials=credentials)
-            
-#             # Prepare event data with Google Meet conference
-#             tz = data.pop('timezone', 'UTC')
-#             tzinfo = pytz.timezone(tz)
-#             start_dt = data['start_datetime']
-#             end_dt = data['end_datetime']
-#             if start_dt.tzinfo is None:
-#                 start_dt = tzinfo.localize(start_dt)
-#             else:
-#                 start_dt = start_dt.astimezone(tzinfo)
-#             if end_dt.tzinfo is None:
-#                 end_dt = tzinfo.localize(end_dt)
-#             else:
-#                 end_dt = end_dt.astimezone(tzinfo)
-
-#             if start_dt >= end_dt:
-#                 return Response({
-#                     'success': False,
-#                     'message': 'End time must be after start time.'
-#                 }, status=status.HTTP_400_BAD_REQUEST)
-#             event = {
-#                 'summary': data.pop('summary'),
-#                 'description': data.pop('description', ''),
-#                 'start': {
-#                     'dateTime': start_dt.isoformat(),
-#                     'timeZone': tz,
-#                 },
-#                 'end': {
-#                     'dateTime': end_dt.isoformat(),
-#                     'timeZone': tz,
-#                 },
-#                 'conferenceData': {
-#                     'createRequest': {
-#                         'requestId': f"meet-{request.user.id}-{timezone.now().timestamp()}",
-#                         'conferenceSolutionKey': {
-#                             'type': 'hangoutsMeet'
-#                         }
-#                     }
-#                 }
-#             }
-            
-#             # Add attendees if provided
-#             attendees = data.pop('attendees', None)
-#             if attendees:
-#                 event['attendees'] = [{'email': email} for email in attendees]
-            
-#             # Add reminders
-#             if data.pop('reminders', True):
-#                 event['reminders'] = {
-#                     'useDefault': False,
-#                     'overrides': [
-#                         {'method': 'email', 'minutes': 24 * 60},
-#                         {'method': 'popup', 'minutes': 30},
-#                     ],
-#                 }
-            
-#             # Create the event with conference data
-#             send_updates = 'all' if data.pop('send_notifications', True) else 'none'
-            
-#             created_event = service.events().insert(
-#                 calendarId='primary',
-#                 body=event,
-#                 conferenceDataVersion=1,
-#                 sendUpdates=send_updates
-#             ).execute()
-            
-#             # Extract Google Meet link
-#             meet_link = None
-#             if 'conferenceData' in created_event:
-#                 entry_points = created_event['conferenceData'].get('entryPoints', [])
-#                 for entry_point in entry_points:
-#                     if entry_point.get('entryPointType') == 'video':
-#                         meet_link = entry_point.get('uri')
-#                         break
-            
-#             # Save to database
-#             booking = BookMeet.objects.create(
-#                 user=request.user,
-#                 meet_link=meet_link or '',
-#                 start_datetime=start_dt.astimezone(pytz.UTC),
-#                 end_datetime=end_dt.astimezone(pytz.UTC)
-#             )
-            
-#             response_serializer = self.get_serializer(booking)
-#             return Response({
-#                 'success': True,
-#                 'data': response_serializer.data,
-#                 'message': 'Google Meet created successfully'
-#             }, status=status.HTTP_201_CREATED)
-            
-#         except HttpError as error:
-#             return Response({
-#                 'success': False,
-#                 'message': f'Google Calendar API error: {str(error)}'
-#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-#         except Exception as e:
-#             return Response({
-#                 'success': False,
-#                 'message': f'Error creating Google Meet: {str(e)}'
-#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#     @action(detail=False, methods=['get'], url_path='sample-payload')
-#     def sample_payload(self, request):
-#         now = timezone.now()
-#         payload = {
-#             "summary": "Client Call",
-#             "description": "Discuss requirements",
-#             "start_datetime": (now + timedelta(hours=3)).isoformat(),
-#             "end_datetime": (now + timedelta(hours=4)).isoformat(),
-#             "timezone": "UTC",
-#             "attendees": [],
-#             "send_notifications": True,
-#             "reminders": True
-#         }
-#         return Response(payload, status=status.HTTP_200_OK)
 

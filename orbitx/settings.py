@@ -143,11 +143,12 @@ CSRF_TRUSTED_ORIGINS = [
     "https://exoveon.com", 
 ]
 
-CSRF_COOKIE_DOMAIN = '.orbitx.uk'
-SESSION_COOKIE_DOMAIN = '.orbitx.uk'
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+# Cookie settings - adjusted for development
+CSRF_COOKIE_DOMAIN = '.orbitx.uk' if not DEBUG else None
+SESSION_COOKIE_DOMAIN = '.orbitx.uk' if not DEBUG else None
+CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+CSRF_COOKIE_SECURE = False if DEBUG else True  # Must be False for localhost
+SESSION_COOKIE_SECURE = False if DEBUG else True  # Must be False for localhost
 
 ROOT_URLCONF = "orbitx.urls"
 
@@ -176,7 +177,7 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': 'admin',
         'HOST': 'localhost',
-        'PORT': '5432',
+        'PORT': '3306', 
     }
 }
 

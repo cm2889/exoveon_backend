@@ -1,9 +1,3 @@
-"""URL type detection utilities for routing to appropriate analysis agents.
-
-This module provides utilities to detect whether a URL is a Google Play Store app
-link or a regular website URL, enabling dynamic routing to the correct agent.
-"""
-
 import re
 from typing import Optional, Tuple
 from urllib.parse import urlparse, parse_qs
@@ -105,7 +99,3 @@ def normalize_url(url: str) -> str:
     
     return url
 
-
-# if __name__ == "__main__":
-#     url = "https://play.google.com/store/apps/details?id=com.thecitybank.citytouch&pcampaignid=web_share"
-#     print(detect_url_type(url)) 
