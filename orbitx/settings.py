@@ -9,7 +9,7 @@ SECRET_KEY = "55105437938a2263e5f3ad940d123fbe6e756763@#orbitx"
 
 DEBUG = True 
 
-ALLOWED_HOSTS = ['api.orbitx.uk', 'www.api.orbitx.uk', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['api.orbitx.design', 'www.api.orbitx.design', 'localhost', '127.0.0.1']
 
 
 INSTALLED_APPS = [
@@ -96,7 +96,6 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Additional CORS settings for video streaming
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -107,7 +106,7 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
-    'range',  # Important for video streaming
+    'range', 
 ]
 
 CORS_EXPOSE_HEADERS = [
@@ -138,7 +137,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.orbitx.uk",
     'http://orbitx.uk', 
     "http://www.orbitx.uk",
-    "https://api.orbitx.uk",  # Added backend itself
+    "https://api.orbitx.uk", 
     "https://orbitx.design", 
     "https://exoveon.com", 
 ]
@@ -148,7 +147,7 @@ CSRF_COOKIE_DOMAIN = '.orbitx.uk' if not DEBUG else None
 SESSION_COOKIE_DOMAIN = '.orbitx.uk' if not DEBUG else None
 CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
 CSRF_COOKIE_SECURE = False if DEBUG else True  # Must be False for localhost
-SESSION_COOKIE_SECURE = False if DEBUG else True  # Must be False for localhost
+SESSION_COOKIE_SECURE = False if DEBUG else True  # Must be False for localhost 
 
 ROOT_URLCONF = "orbitx.urls"
 
