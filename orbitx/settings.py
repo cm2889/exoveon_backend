@@ -84,11 +84,11 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
-    'https://orbitx.uk', 
-    "https://www.orbitx.uk",
-    'http://orbitx.uk', 
-    "http://www.orbitx.uk",
-    "https://www.orbitx.uk",
+    'https://orbitx.design', 
+    "https://www.orbitx.design",
+    'http://orbitx.design', 
+    "http://www.orbitx.design",
+    "https://www.orbitx.design",
     "https://orbitx.design", 
     "https://exoveon.com", 
 
@@ -133,18 +133,18 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     "http://localhost:4000", 
-    'https://orbitx.uk', 
-    "https://www.orbitx.uk",
-    'http://orbitx.uk', 
-    "http://www.orbitx.uk",
-    "https://api.orbitx.uk", 
+    'https://orbitx.design', 
+    "https://www.orbitx.design",
+    'http://orbitx.design', 
+    "http://www.orbitx.design",
+    "https://api.orbitx.design", 
     "https://orbitx.design", 
     "https://exoveon.com", 
 ]
 
 # Cookie settings - adjusted for development
-CSRF_COOKIE_DOMAIN = '.orbitx.uk' if not DEBUG else None
-SESSION_COOKIE_DOMAIN = '.orbitx.uk' if not DEBUG else None
+CSRF_COOKIE_DOMAIN = '.orbitx.design' if not DEBUG else None
+SESSION_COOKIE_DOMAIN = '.orbitx.design' if not DEBUG else None
 CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
 CSRF_COOKIE_SECURE = False if DEBUG else True  # Must be False for localhost
 SESSION_COOKIE_SECURE = False if DEBUG else True  # Must be False for localhost 
