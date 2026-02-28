@@ -54,8 +54,7 @@ GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
 
-CREDS_FILENAME = 'auth_creds.json'
-
+CREDS_FILENAME = 'google_auth.json'
 
 def _load_default_client_config():
     """Load default client config from auth_creds.json in BASE_DIR."""
