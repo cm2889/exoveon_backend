@@ -22,7 +22,7 @@ from rest_framework import generics
 from rest_framework import viewsets 
 from rest_framework.exceptions import PermissionDenied 
 from rest_framework import permissions 
-from rest_framework.decorators import api_view, permission_classes, action 
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, action 
 from rest_framework_simplejwt.authentication import JWTAuthentication 
 from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError 
@@ -83,6 +83,8 @@ def _ensure_client_config(client_config: dict, redirect_uri: str | None):
 
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
 def google_auth(request):
     try:
         redirect_uri = request.data.get('redirect_uri')

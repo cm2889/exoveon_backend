@@ -136,11 +136,13 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Cookie settings - adjusted for development
-CSRF_COOKIE_DOMAIN = '.orbitx.design' if not DEBUG else None
-SESSION_COOKIE_DOMAIN = '.orbitx.design' if not DEBUG else None
+CSRF_COOKIE_DOMAIN = '.exoveon.com' if not DEBUG else None
+SESSION_COOKIE_DOMAIN = '.exoveon.com' if not DEBUG else None
 CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+SESSION_COOKIE_SAMESITE_FORCE_ALL = True
 CSRF_COOKIE_SECURE = False if DEBUG else True 
 SESSION_COOKIE_SECURE = False if DEBUG else True 
+SESSION_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
 
 ROOT_URLCONF = "orbitx.urls"
 
