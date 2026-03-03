@@ -9,7 +9,7 @@ SECRET_KEY = "55105437938a2263e5f3ad940d123fbe6e756763@#orbitx"
 
 DEBUG = True 
 
-ALLOWED_HOSTS = ['api.exoveon.com', 'www.api.exoveon.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['api.exoveon.com', 'www.api.exoveon.com', 'exoveon.com', 'localhost', '127.0.0.1']
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -84,7 +84,9 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:8080',
     'http://127.0.0.1:8080',
     "https://exoveon.com", 
+    "http://exoveon.com",
     "https://api.exoveon.com", 
+    "http://api.exoveon.com", 
 
 ]
 
@@ -127,9 +129,10 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     "http://localhost:4000", 
-    "https://orbitx.design", 
     "https://exoveon.com", 
+    "http://exoveon.com", 
     "https://api.exoveon.com", 
+    "http://api.exoveon.com", 
 ]
 
 # Cookie settings - adjusted for development
